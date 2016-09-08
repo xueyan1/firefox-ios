@@ -2224,7 +2224,8 @@ extension BrowserViewController: WKNavigationDelegate {
                 return
             }
 
-            if MSOutlookIntegration.newEmailFromMetadata(metadata) {
+            let outlookLink = MSOutlookIntegration.newEmailURLFromMetadata(metadata)
+            if UIApplication.sharedApplication().openURL(outlookLink) {
                 decisionHandler(WKNavigationActionPolicy.Cancel)
                 return
             }

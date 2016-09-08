@@ -4,6 +4,10 @@
 
 import Foundation
 
+/**
+ *  Data structure containing metadata associated with a mailto: link. For additional details, 
+ *  see RFC 2368 https://tools.ietf.org/html/rfc2368
+ */
 public struct MailToMetadata {
     public let to: String
     public let headers: [String: String]
@@ -22,12 +26,16 @@ public extension NSURL {
 
         // Extract 'to' value
         let toStart = absoluteString.startIndex.advancedBy("mailto:".characters.count)
-        let questionMark = absoluteString.characters.indexOf("?") ?? absoluteString.endIndex
+        let toEnd = absoluteString.characters.indexOf("?") ?? absoluteString.endIndex
 
-        let to = absoluteString.substringWithRange(toStart..<questionMark)
+        let to = absoluteString.substringWithRange(toStart..<toEnd)
+
+        guard toEnd != absoluteString.endIndex else {
+            return MailToMetadata(to: to, headers: [String: String]())
+        }
 
         // Extract headers
-        let headersString = absoluteString.substringWithRange(questionMark.advancedBy(1)..<absoluteString.endIndex)
+        let headersString = absoluteString.substringWithRange(toEnd.advancedBy(1)..<absoluteString.endIndex)
         var headers = [String: String]()
         let headerComponents = headersString.componentsSeparatedByString("&")
 
@@ -41,9 +49,6 @@ public extension NSURL {
             headers[hname] = hvalue
         }
 
-        // Since putting the to value is valid in both the header section and the designated to section,
-        // check to see where our to value is at and in case of a duplicate use the designated one.
-        let dedupedTo = to == "" ? headers["to"] ?? "" : to
-        return MailToMetadata(to: dedupedTo, headers: headers)
+        return MailToMetadata(to: to, headers: headers)
     }
 }
