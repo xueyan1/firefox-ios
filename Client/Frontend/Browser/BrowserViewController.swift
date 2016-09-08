@@ -2218,6 +2218,18 @@ extension BrowserViewController: WKNavigationDelegate {
             return
         }
 
+        if url.scheme == "mailto" && AppConstants.MOZ_MS_OUTLOOK_INTEGRATION {
+            guard let metadata = url.mailToMetadata() else {
+                decisionHandler(WKNavigationActionPolicy.Cancel)
+                return
+            }
+
+            if MSOutlookIntegration.newEmailFromMetadata(metadata) {
+                decisionHandler(WKNavigationActionPolicy.Cancel)
+                return
+            }
+        }
+
         // Second special case are a set of URLs that look like regular http links, but should be handed over to iOS
         // instead of being loaded in the webview. Note that there is no point in calling canOpenURL() here, because
         // iOS will always say yes. TODO Is this the same as isWhitelisted?

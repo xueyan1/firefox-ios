@@ -166,4 +166,21 @@ public struct AppConstants {
             return true
         #endif
     }()
+
+    /// Adds support for opening mailto: links in MS Outlook on iOS
+    public static let MOZ_MS_OUTLOOK_INTEGRATION: Bool = {
+        #if MOZ_CHANNEL_RELEASE
+            return false
+        #elseif MOZ_CHANNEL_BETA
+            return true
+        #elseif MOZ_CHANNEL_NIGHTLY
+            return true
+        #elseif MOZ_CHANNEL_FENNEC
+            return true
+        #elseif MOZ_CHANNEL_AURORA
+            return true
+        #else
+            return true
+        #endif
+    }()
 }

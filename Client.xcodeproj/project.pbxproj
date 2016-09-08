@@ -616,6 +616,8 @@
 		E67422C51CFF2D39009E8373 /* youtube.ico in Resources */ = {isa = PBXBuildFile; fileRef = E67422C41CFF2D39009E8373 /* youtube.ico */; };
 		E679FDBB1B99CF10008C220A /* PrivateBrowsingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E679FDBA1B99CF10008C220A /* PrivateBrowsingTests.swift */; };
 		E67D57031D527449003917B1 /* BatchingClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = E67D57021D527449003917B1 /* BatchingClient.swift */; };
+		E68A18C81D81AF8800BB3CB4 /* NSURLExtensionsMailTo.swift in Sources */ = {isa = PBXBuildFile; fileRef = E68A18C71D81AF8800BB3CB4 /* NSURLExtensionsMailTo.swift */; };
+		E68A18CB1D81B10100BB3CB4 /* MSOutlookIntegration.swift in Sources */ = {isa = PBXBuildFile; fileRef = E68A18CA1D81B10100BB3CB4 /* MSOutlookIntegration.swift */; };
 		E68AEDB01B18F81A00133D99 /* SwipeAnimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = E68AEDAF1B18F81A00133D99 /* SwipeAnimator.swift */; };
 		E68D6AD81DAFD1F0007E4114 /* ActivityStreamOnyxTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = E68D6AD61DAFD1F0007E4114 /* ActivityStreamOnyxTypes.swift */; };
 		E68D6AD91DAFD1F0007E4114 /* OnyxTelemetry.swift in Sources */ = {isa = PBXBuildFile; fileRef = E68D6AD71DAFD1F0007E4114 /* OnyxTelemetry.swift */; };
@@ -1721,6 +1723,8 @@
 		E679FDBA1B99CF10008C220A /* PrivateBrowsingTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PrivateBrowsingTests.swift; sourceTree = "<group>"; };
 		E67D57021D527449003917B1 /* BatchingClient.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = BatchingClient.swift; sourceTree = "<group>"; };
 		E682F53C1C89E72600ECB6B2 /* FennecAurora.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = FennecAurora.xcconfig; path = Configuration/FennecAurora.xcconfig; sourceTree = "<group>"; };
+		E68A18C71D81AF8800BB3CB4 /* NSURLExtensionsMailTo.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = NSURLExtensionsMailTo.swift; sourceTree = "<group>"; };
+		E68A18CA1D81B10100BB3CB4 /* MSOutlookIntegration.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MSOutlookIntegration.swift; sourceTree = "<group>"; };
 		E68AEDAF1B18F81A00133D99 /* SwipeAnimator.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SwipeAnimator.swift; sourceTree = "<group>"; };
 		E68D6AD61DAFD1F0007E4114 /* ActivityStreamOnyxTypes.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = ActivityStreamOnyxTypes.swift; path = Telemetry/ActivityStreamOnyxTypes.swift; sourceTree = "<group>"; };
 		E68D6AD71DAFD1F0007E4114 /* OnyxTelemetry.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = OnyxTelemetry.swift; path = Telemetry/OnyxTelemetry.swift; sourceTree = "<group>"; };
@@ -2108,6 +2112,7 @@
 				288501FA1AC0F63800E7F670 /* NSScannerExtensions.swift */,
 				E6F9659D1B2F63A20034B023 /* NSStringExtensions.swift */,
 				2891CEC31ADC7F2900427D3C /* NSURLExtensions.swift */,
+				E68A18C71D81AF8800BB3CB4 /* NSURLExtensionsMailTo.swift */,
 				E6D749001C4688D800C66ABA /* NSURLProtectionSpaceExtensions.swift */,
 				28532D0B1C4837F1000072D9 /* SetExtensions.swift */,
 				2F13E77E1AC0BFF200D75081 /* StringExtensions.swift */,
@@ -2779,6 +2784,7 @@
 		D3A994941A368691008AD1AC /* Browser */ = {
 			isa = PBXGroup;
 			children = (
+				E68A18C91D81B0EC00BB3CB4 /* Integrations */,
 				0B3E7D931B27A7CE00E2E84D /* AboutHomeHandler.swift */,
 				D38F02D01C05127100175932 /* Authenticator.swift */,
 				C400467B1CF4E43E00B08303 /* BackForwardListViewController.swift */,
@@ -3089,6 +3095,14 @@
 			name = Apple;
 			path = ThirdParty/Apple;
 			sourceTree = SOURCE_ROOT;
+		};
+		E68A18C91D81B0EC00BB3CB4 /* Integrations */ = {
+			isa = PBXGroup;
+			children = (
+				E68A18CA1D81B10100BB3CB4 /* MSOutlookIntegration.swift */,
+			);
+			name = Integrations;
+			sourceTree = "<group>";
 		};
 		E68E7ADF1CAC209000FDCA76 /* PasscodeConfiguration */ = {
 			isa = PBXGroup;
@@ -4622,6 +4636,7 @@
 				E4E7EB6B1C4A86430094275D /* SupportUtils.swift in Sources */,
 				2FDE87321ABA3E87005317B1 /* json.swift in Sources */,
 				E69966991B72674B0036F797 /* RollingFileLogger.swift in Sources */,
+				E68A18C81D81AF8800BB3CB4 /* NSURLExtensionsMailTo.swift in Sources */,
 				288A2DAB1AB8B3700023ABC3 /* BoxType.swift in Sources */,
 				E6D749011C4688D800C66ABA /* NSURLProtectionSpaceExtensions.swift in Sources */,
 				E66464EE1C10D98000AF05CE /* AssertionUtils.swift in Sources */,
@@ -5099,6 +5114,7 @@
 				3BE7275D1CCFE8B60099189F /* CustomSearchHandler.swift in Sources */,
 				E692E3291C46E62D009D1240 /* AuthenticationSettingsViewController.swift in Sources */,
 				E663D5781BB341C4001EF30E /* ToggleButton.swift in Sources */,
+				E68A18CB1D81B10100BB3CB4 /* MSOutlookIntegration.swift in Sources */,
 				E6327A641BF6438E008D12E0 /* DebugSettingsBundleOptions.swift in Sources */,
 				D3E8EF101B97BE69001900FB /* ClearPrivateDataTableViewController.swift in Sources */,
 				7BC68CCC1CC152B70043562A /* MenuDelegate.swift in Sources */,
