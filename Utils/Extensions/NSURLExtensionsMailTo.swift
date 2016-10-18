@@ -20,22 +20,22 @@ public extension NSURL {
      https://tools.ietf.org/html/rfc2368
      */
     func mailToMetadata() -> MailToMetadata? {
-        guard scheme == "mailto" else {
+        guard let urlString = absoluteString where scheme == "mailto"else {
             return nil
         }
 
         // Extract 'to' value
-        let toStart = absoluteString.startIndex.advancedBy("mailto:".characters.count)
-        let toEnd = absoluteString.characters.indexOf("?") ?? absoluteString.endIndex
+        let toStart = urlString.startIndex.advancedBy("mailto:".characters.count)
+        let toEnd = urlString.characters.indexOf("?") ?? urlString.endIndex
 
-        let to = absoluteString.substringWithRange(toStart..<toEnd)
+        let to = urlString.substringWithRange(toStart..<toEnd)
 
-        guard toEnd != absoluteString.endIndex else {
+        guard toEnd != urlString.endIndex else {
             return MailToMetadata(to: to, headers: [String: String]())
         }
 
         // Extract headers
-        let headersString = absoluteString.substringWithRange(toEnd.advancedBy(1)..<absoluteString.endIndex)
+        let headersString = urlString.substringWithRange(toEnd.advancedBy(1)..<urlString.endIndex)
         var headers = [String: String]()
         let headerComponents = headersString.componentsSeparatedByString("&")
 

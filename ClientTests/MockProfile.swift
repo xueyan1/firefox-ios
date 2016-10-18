@@ -185,8 +185,6 @@ public class MockProfile: Profile {
         self.syncManager.onAddedAccount()
     }
 
-    func flushAccount() {}
-
     func removeAccount() {
         let old = self.account
         self.account = nil
