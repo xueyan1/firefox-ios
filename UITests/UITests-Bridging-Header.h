@@ -11,4 +11,6 @@
 #import <KIF/UIAccessibilityElement-KIFAdditions.h>
 #import <KIF/UIWindow-KIFAdditions.h>
 
+#import "CLLocationManager+PrivateHelper.h"
+
 #endif

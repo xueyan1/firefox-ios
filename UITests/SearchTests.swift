@@ -4,6 +4,7 @@
 
 import Foundation
 import WebKit
+import CoreLocation
 
 private let LabelPrompt = "Turn on search suggestions?"
 private let HintSuggestionButton = "Searches for the suggestion"
@@ -192,6 +193,9 @@ class SearchTests: KIFTestCase {
     func testSearchTermExtractionDisplaysInURLBar() {
         let searchTerms = "foo bar"
         searchForTerms(searchTerms, withSearchEngine: "Amazon.com")
+
+        CLLocationManager._setAuthorizationStatus(true, forBundleIdentifier: "blah")
+
         searchForTerms(searchTerms, withSearchEngine: "Bing")
         searchForTerms(searchTerms, withSearchEngine: "DuckDuckGo")
         searchForTerms(searchTerms, withSearchEngine: "Google")
