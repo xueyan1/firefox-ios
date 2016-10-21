@@ -589,12 +589,12 @@
 		E640E85E1C73A45A00C5F072 /* PasscodeEntryViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E640E85D1C73A45A00C5F072 /* PasscodeEntryViewController.swift */; };
 		E640E86A1C73A47C00C5F072 /* PasscodeViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = E640E8691C73A47C00C5F072 /* PasscodeViews.swift */; };
 		E640E8701C73BCF500C5F072 /* AuthenticationManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E640E86F1C73BCF500C5F072 /* AuthenticationManagerTests.swift */; };
+		E648EDDA1DBA8F440025BC90 /* WebMetadataKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E648EDD91DBA8F440025BC90 /* WebMetadataKit.framework */; };
 		E64ED8FA1BC55AE300DAF864 /* UIAlertControllerExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = E64ED8F91BC55AE300DAF864 /* UIAlertControllerExtensions.swift */; };
 		E65072A31B2737DA001A0AC6 /* GeometryExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6A99D761B20D95800006EDD /* GeometryExtensions.swift */; };
 		E65072A41B273824001A0AC6 /* GeometryExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6A99D761B20D95800006EDD /* GeometryExtensions.swift */; };
 		E653422D1C5944F90039DD9E /* BrowserPrompts.swift in Sources */ = {isa = PBXBuildFile; fileRef = E653422C1C5944F90039DD9E /* BrowserPrompts.swift */; };
 		E65607611C08B4E200534B02 /* SearchInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E65607601C08B4E200534B02 /* SearchInputView.swift */; };
-		E65927FC1DAD349200692633 /* page-metadata-parser.bundle.js in Resources */ = {isa = PBXBuildFile; fileRef = E65927FB1DAD349200692633 /* page-metadata-parser.bundle.js */; };
 		E65C5BC71BEA4F6500D28BEF /* NativeRefTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E65C5BC61BEA4F6500D28BEF /* NativeRefTests.swift */; };
 		E65C5BD31BEA4F8A00D28BEF /* FBSnapshotTestCase.m in Sources */ = {isa = PBXBuildFile; fileRef = E65C5B951BEA4E7100D28BEF /* FBSnapshotTestCase.m */; };
 		E65C5BD41BEA4F8A00D28BEF /* FBSnapshotTestCasePlatform.m in Sources */ = {isa = PBXBuildFile; fileRef = E65C5B971BEA4E7100D28BEF /* FBSnapshotTestCasePlatform.m */; };
@@ -663,7 +663,6 @@
 		E6F9659C1B2F5F800034B023 /* effective_tld_names.dat in Resources */ = {isa = PBXBuildFile; fileRef = E6F9659B1B2F5F800034B023 /* effective_tld_names.dat */; };
 		E6F9659E1B2F63A20034B023 /* NSStringExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6F9659D1B2F63A20034B023 /* NSStringExtensions.swift */; };
 		E6FF6AC21D8705110070C294 /* MetadataParserHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6FF6AC11D8705110070C294 /* MetadataParserHelper.swift */; };
-		E6FF6AC61D8708F70070C294 /* MetadataParser.js in Resources */ = {isa = PBXBuildFile; fileRef = E6FF6AC51D8708F70070C294 /* MetadataParser.js */; };
 		E6FF6ACA1D873CFF0070C294 /* PageMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6FF6AC91D873CFF0070C294 /* PageMetadata.swift */; };
 		F35B8D2B1D6380EA008E3D61 /* SessionRestore.html in Resources */ = {isa = PBXBuildFile; fileRef = F35B8D2A1D6380EA008E3D61 /* SessionRestore.html */; };
 		F35B8D2D1D6383E9008E3D61 /* SessionRestoreHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = F35B8D2C1D6383E9008E3D61 /* SessionRestoreHelper.swift */; };
@@ -1682,10 +1681,10 @@
 		E640E85D1C73A45A00C5F072 /* PasscodeEntryViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PasscodeEntryViewController.swift; sourceTree = "<group>"; };
 		E640E8691C73A47C00C5F072 /* PasscodeViews.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PasscodeViews.swift; sourceTree = "<group>"; };
 		E640E86F1C73BCF500C5F072 /* AuthenticationManagerTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AuthenticationManagerTests.swift; sourceTree = "<group>"; };
+		E648EDD91DBA8F440025BC90 /* WebMetadataKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebMetadataKit.framework; path = Carthage/Build/iOS/WebMetadataKit.framework; sourceTree = "<group>"; };
 		E64ED8F91BC55AE300DAF864 /* UIAlertControllerExtensions.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = UIAlertControllerExtensions.swift; path = Extensions/UIAlertControllerExtensions.swift; sourceTree = "<group>"; };
 		E653422C1C5944F90039DD9E /* BrowserPrompts.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = BrowserPrompts.swift; sourceTree = "<group>"; };
 		E65607601C08B4E200534B02 /* SearchInputView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SearchInputView.swift; sourceTree = "<group>"; };
-		E65927FB1DAD349200692633 /* page-metadata-parser.bundle.js */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.javascript; path = "page-metadata-parser.bundle.js"; sourceTree = "<group>"; };
 		E65C5B931BEA4E7100D28BEF /* FBSnapshotTestCase-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "FBSnapshotTestCase-Info.plist"; sourceTree = "<group>"; };
 		E65C5B941BEA4E7100D28BEF /* FBSnapshotTestCase.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FBSnapshotTestCase.h; sourceTree = "<group>"; };
 		E65C5B951BEA4E7100D28BEF /* FBSnapshotTestCase.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FBSnapshotTestCase.m; sourceTree = "<group>"; };
@@ -1771,7 +1770,6 @@
 		E6F9659D1B2F63A20034B023 /* NSStringExtensions.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = NSStringExtensions.swift; sourceTree = "<group>"; };
 		E6FCC43C1C40565200DF6113 /* FirefoxBeta.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = FirefoxBeta.xcconfig; path = Configuration/FirefoxBeta.xcconfig; sourceTree = "<group>"; };
 		E6FF6AC11D8705110070C294 /* MetadataParserHelper.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MetadataParserHelper.swift; sourceTree = "<group>"; };
-		E6FF6AC51D8708F70070C294 /* MetadataParser.js */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.javascript; path = MetadataParser.js; sourceTree = "<group>"; };
 		E6FF6AC91D873CFF0070C294 /* PageMetadata.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PageMetadata.swift; sourceTree = "<group>"; };
 		F35B8D2A1D6380EA008E3D61 /* SessionRestore.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = SessionRestore.html; sourceTree = "<group>"; };
 		F35B8D2C1D6383E9008E3D61 /* SessionRestoreHelper.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SessionRestoreHelper.swift; sourceTree = "<group>"; };
@@ -1830,6 +1828,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E648EDDA1DBA8F440025BC90 /* WebMetadataKit.framework in Frameworks */,
 				E6619A9D1DA693AB0063EAD6 /* OnyxClient.framework in Frameworks */,
 				7B8A47F61D01D3B400C07734 /* PassKit.framework in Frameworks */,
 				E6B6DCA21CD3D370009CF713 /* CrashReporter.framework in Frameworks */,
@@ -2264,7 +2263,6 @@
 		28CE83EF1A1D246900576538 /* Third-Party Source */ = {
 			isa = PBXGroup;
 			children = (
-				E65927FA1DAD349200692633 /* Mozilla */,
 				E66C5B451BDA81050051AA93 /* Apple */,
 				288A2D7F1AB8B2B20023ABC3 /* Box */,
 				E65C5B8B1BEA4E7100D28BEF /* FBSnapshotTestCase */,
@@ -2555,6 +2553,7 @@
 		7B604FC11C496005006EEEC3 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				E648EDD91DBA8F440025BC90 /* WebMetadataKit.framework */,
 				E6619A9C1DA693AB0063EAD6 /* OnyxClient.framework */,
 				3BA9A0221D2C208C00BD418C /* Fuzi.framework */,
 				7B8A47F51D01D3B400C07734 /* PassKit.framework */,
@@ -3019,15 +3018,6 @@
 			name = Delegates;
 			sourceTree = "<group>";
 		};
-		E65927FA1DAD349200692633 /* Mozilla */ = {
-			isa = PBXGroup;
-			children = (
-				E65927FB1DAD349200692633 /* page-metadata-parser.bundle.js */,
-			);
-			name = Mozilla;
-			path = ThirdParty/Mozilla;
-			sourceTree = "<group>";
-		};
 		E65C5B8B1BEA4E7100D28BEF /* FBSnapshotTestCase */ = {
 			isa = PBXGroup;
 			children = (
@@ -3319,7 +3309,6 @@
 				0BF42D381A7C0E8900889E28 /* Favicons.js */,
 				D3B692401B9F9CC8004B87A4 /* FindInPage.js */,
 				0BDA568A1B26B1BE008C9B96 /* LoginsHelper.js */,
-				E6FF6AC51D8708F70070C294 /* MetadataParser.js */,
 				A91528D11D0E637600CD0425 /* NoImageModeHelper.js */,
 				A93067D81D0FE15E00C49C6E /* NightModeHelper.js */,
 				3BE7274D1CCFE8A30099189F /* CustomSearchHelper.js */,
@@ -4428,7 +4417,6 @@
 				E4424B201AC6EBE100F44C38 /* ReaderSettings.xcassets in Resources */,
 				D30684F11C84F12A002D8D82 /* SearchPlugins in Resources */,
 				E47536FC1C85415F0022CC69 /* PrintHelper.js in Resources */,
-				E6FF6AC61D8708F70070C294 /* MetadataParser.js in Resources */,
 				D308EE561CBF0BF5006843F2 /* CertError.css in Resources */,
 				E4B7B7641A793CF20022C5E0 /* CharisSILR.ttf in Resources */,
 				2F834D161A80629A006A0B7B /* FxASignIn.js in Resources */,
@@ -4447,7 +4435,6 @@
 				A93067D91D0FE15E00C49C6E /* NightModeHelper.js in Resources */,
 				E49C0EB11B46109C009092BB /* WindowCloseHelper.js in Resources */,
 				E4D8F3B01ACDD5150005A2E4 /* InfoPlist.strings in Resources */,
-				E65927FC1DAD349200692633 /* page-metadata-parser.bundle.js in Resources */,
 				2F44FB2D1A9D5D8500FD20CC /* FiraSans-BoldItalic.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4504,6 +4491,7 @@
 				"$(SRCROOT)/Carthage/Build/iOS/libPhoneNumber.framework",
 				"$(SRCROOT)/Carthage/Build/iOS/Fuzi.framework",
 				"$(SRCROOT)/Carthage/Build/iOS/OnyxClient.framework",
+				"$(SRCROOT)/Carthage/Build/iOS/WebMetadataKit.framework",
 			);
 			name = "Copy Carthage Dependencies";
 			outputPaths = (
