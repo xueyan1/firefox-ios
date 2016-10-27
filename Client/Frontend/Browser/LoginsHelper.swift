@@ -17,7 +17,7 @@ class LoginsHelper: TabHelper {
     private var snackBar: SnackBar?
 
     // Exposed for mocking purposes
-    var logins: BrowserLogins {
+    var logins: BrowserLogins? {
         return profile.logins
     }
 
@@ -42,6 +42,10 @@ class LoginsHelper: TabHelper {
     func userContentController(userContentController: WKUserContentController, didReceiveScriptMessage message: WKScriptMessage) {
         guard var res = message.body as? [String: AnyObject] else { return }
         guard let type = res["type"] as? String else { return }
+
+        guard UIApplication.sharedApplication().applicationState == .Active else {
+            return
+        }
 
         // We don't use the WKWebView's URL since the page can spoof the URL by using document.location
         // right before requesting login data. See bug 1194567 for more context.
@@ -91,16 +95,20 @@ class LoginsHelper: TabHelper {
         return attr
     }
 
-    func getLoginsForProtectionSpace(protectionSpace: NSURLProtectionSpace) -> Deferred<Maybe<Cursor<LoginData>>> {
-        return profile.logins.getLoginsForProtectionSpace(protectionSpace)
+    func getLoginsForProtectionSpace(protectionSpace: NSURLProtectionSpace) -> Deferred<Maybe<[LoginData]>> {
+        guard let logins = logins else {
+            return deferMaybe([])
+        }
+
+        return logins.getLoginsForProtectionSpace(protectionSpace) >>== { deferMaybe($0.asArray()) }
     }
 
     func updateLoginByGUID(guid: GUID, new: LoginData, significant: Bool) -> Success {
-        return profile.logins.updateLoginByGUID(guid, new: new, significant: significant)
+        return logins?.updateLoginByGUID(guid, new: new, significant: significant) ?? succeed()
     }
 
     func removeLoginsWithGUIDs(guids: [GUID]) -> Success {
-        return profile.logins.removeLoginsWithGUIDs(guids)
+        return logins?.removeLoginsWithGUIDs(guids) ?? succeed()
     }
 
     func setCredentials(login: LoginData) {
@@ -109,15 +117,14 @@ class LoginsHelper: TabHelper {
             return
         }
 
-        profile.logins
-               .getLoginsForProtectionSpace(login.protectionSpace, withUsername: login.username)
+        logins?.getLoginsForProtectionSpace(login.protectionSpace, withUsername: login.username)
                .uponQueue(dispatch_get_main_queue()) { res in
             if let data = res.successValue {
                 log.debug("Found \(data.count) logins.")
                 for saved in data {
                     if let saved = saved {
                         if saved.password == login.password {
-                            self.profile.logins.addUseOfLoginByGUID(saved.guid)
+                            self.logins?.addUseOfLoginByGUID(saved.guid)
                             return
                         }
 
@@ -161,7 +168,7 @@ class LoginsHelper: TabHelper {
                 SnackButton(title: Strings.LoginsHelperSaveLoginButtonTitle, accessibilityIdentifier: "SaveLoginPrompt.saveLoginButton", callback: { (bar: SnackBar) -> Void in
                     self.tab?.removeSnackbar(bar)
                     self.snackBar = nil
-                    self.profile.logins.addLogin(login)
+                    self.logins?.addLogin(login)
                 })
             ])
         tab?.addSnackbar(snackBar!)
@@ -200,18 +207,18 @@ class LoginsHelper: TabHelper {
                 SnackButton(title: Strings.LoginsHelperUpdateButtonTitle, accessibilityIdentifier: "UpdateLoginPrompt.updateButton", callback: { (bar: SnackBar) -> Void in
                     self.tab?.removeSnackbar(bar)
                     self.snackBar = nil
-                    self.profile.logins.updateLoginByGUID(guid, new: new,
-                                                          significant: new.isSignificantlyDifferentFrom(old))
+                    self.logins?.updateLoginByGUID(guid, new: new,
+                                                         significant: new.isSignificantlyDifferentFrom(old))
                 })
             ])
         tab?.addSnackbar(snackBar!)
     }
 
     private func requestLogins(login: LoginData, requestId: String) {
-        profile.logins.getLoginsForProtectionSpace(login.protectionSpace).uponQueue(dispatch_get_main_queue()) { res in
+        logins?.getLoginsForProtectionSpace(login.protectionSpace).uponQueue(dispatch_get_main_queue()) { res in
             var jsonObj = [String: AnyObject]()
             if let cursor = res.successValue {
-                log.debug("Found \(cursor.count) logins.")
+                log.debug("Found \(cursor.count) logins?.")
                 jsonObj["requestId"] = requestId
                 jsonObj["name"] = "RemoteLogins:loginsFound"
                 jsonObj["logins"] = cursor.map { $0!.toDict() }

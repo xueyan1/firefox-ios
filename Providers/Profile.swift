@@ -146,7 +146,7 @@ protocol Profile: class {
     var recommendations: HistoryRecommendations { get }
     var favicons: Favicons { get }
     var readingList: ReadingListService? { get }
-    var logins: protocol<BrowserLogins, SyncableLogins, ResettableSyncStorage> { get }
+    var logins: protocol<BrowserLogins, SyncableLogins, ResettableSyncStorage>? { get }
     var certStore: CertStore { get }
     var recentlyClosedTabs: ClosedTabsStore { get }
 
@@ -186,6 +186,7 @@ protocol Profile: class {
 public class BrowserProfile: Profile {
     private let name: String
     private let keychain: KeychainWrapper
+    private var isShutdown: Bool = false
 
     internal let files: FileAccessor
 
@@ -267,6 +268,7 @@ public class BrowserProfile: Profile {
     }
 
     func reopen() {
+        isShutdown = false
         log.debug("Reopening profile.")
 
         if dbCreated {
@@ -274,11 +276,13 @@ public class BrowserProfile: Profile {
         }
 
         if loginsDBCreated {
-            loginsDB.reopenIfClosed()
+            loginsDB?.reopenIfClosed()
         }
     }
 
     func shutdown() {
+        isShutdown = true
+        
         log.debug("Shutting down profile.")
 
         if self.dbCreated {
@@ -286,7 +290,7 @@ public class BrowserProfile: Profile {
         }
 
         if self.loginsDBCreated {
-            loginsDB.forceClose()
+            loginsDB?.forceClose()
         }
     }
 
@@ -482,9 +486,23 @@ public class BrowserProfile: Profile {
         self.remoteClientsAndTabs.insertCommands(commands, forClients: clients) >>> { self.syncManager.syncClients() }
     }
 
-    lazy var logins: protocol<BrowserLogins, SyncableLogins, ResettableSyncStorage> = {
-        return SQLiteLogins(db: self.loginsDB)
-    }()
+    var logins: protocol<BrowserLogins, SyncableLogins, ResettableSyncStorage>? {
+        struct Singleton {
+            static var token: dispatch_once_t = 0
+            static var instance: SQLiteLogins!
+        }
+
+        // Only create the singleton instance if we have a loginsDB instance to use.
+        guard let loginsDB = self.loginsDB else {
+            return nil
+        }
+
+        dispatch_once(&Singleton.token) {
+            Singleton.instance = SQLiteLogins(db: loginsDB)
+        }
+
+        return Singleton.instance
+    }
 
     // This is currently only used within the dispatch_once block in loginsDB, so we don't
     // have to worry about races giving us two keys. But if this were ever to be used
@@ -510,17 +528,22 @@ public class BrowserProfile: Profile {
     }
 
     private var loginsDBCreated = false
-    private lazy var loginsDB: BrowserDB = {
+    private var loginsDB: BrowserDB? {
         struct Singleton {
             static var token: dispatch_once_t = 0
             static var instance: BrowserDB!
         }
+
+        guard !self.isShutdown else {
+            return nil
+        }
+
         dispatch_once(&Singleton.token) {
             Singleton.instance = BrowserDB(filename: "logins.db", secretKey: self.loginsKey, files: self.files)
             self.loginsDBCreated = true
         }
         return Singleton.instance
-    }()
+    }
 
     lazy var isChinaEdition: Bool = {
         return NSLocale.currentLocale().localeIdentifier == "zh_CN"
@@ -999,8 +1022,10 @@ public class BrowserProfile: Profile {
             case "history":
                 return HistorySynchronizer.resetSynchronizerWithStorage(self.profile.history, basePrefs: self.prefsForSync, collection: "history")
             case "passwords":
-                return LoginsSynchronizer.resetSynchronizerWithStorage(self.profile.logins, basePrefs: self.prefsForSync, collection: "passwords")
-
+                if let logins = self.profile.logins {
+                    return LoginsSynchronizer.resetSynchronizerWithStorage(logins, basePrefs: self.prefsForSync, collection: "passwords")
+                }
+                return succeed()
             case "forms":
                 log.debug("Requested reset for forms, but this client doesn't sync them yet.")
                 return succeed()
@@ -1024,12 +1049,16 @@ public class BrowserProfile: Profile {
             let profile = self.profile
 
             // Run these in order, because they might write to the same DB!
-            let remove = [
+            var remove = [
                 profile.history.onRemovedAccount,
                 profile.remoteClientsAndTabs.onRemovedAccount,
-                profile.logins.onRemovedAccount,
-                profile.bookmarks.onRemovedAccount,
             ]
+
+            if let logins = profile.logins {
+                remove.append(logins.onRemovedAccount)
+            }
+
+            remove.append(profile.bookmarks.onRemovedAccount)
 
             let clearPrefs: () -> Success = {
                 withExtendedLifetime(self) {
@@ -1096,7 +1125,10 @@ public class BrowserProfile: Profile {
         private func syncLoginsWithDelegate(delegate: SyncDelegate, prefs: Prefs, ready: Ready) -> SyncResult {
             log.debug("Syncing logins to storage.")
             let loginsSynchronizer = ready.synchronizer(LoginsSynchronizer.self, delegate: delegate, prefs: prefs)
-            return loginsSynchronizer.synchronizeLocalLogins(self.profile.logins, withServer: ready.client, info: ready.info)
+            if let logins = self.profile.logins {
+                return loginsSynchronizer.synchronizeLocalLogins(logins, withServer: ready.client, info: ready.info)
+            }
+            return deferMaybe(SyncStatus.Completed)
         }
 
         private func mirrorBookmarksWithDelegate(delegate: SyncDelegate, prefs: Prefs, ready: Ready) -> SyncResult {
@@ -1243,7 +1275,10 @@ public class BrowserProfile: Profile {
         }
 
         func hasSyncedLogins() -> Deferred<Maybe<Bool>> {
-            return self.profile.logins.hasSyncedLogins()
+            if let logins = profile.logins {
+                return logins.hasSyncedLogins()
+            }
+            return deferMaybe(false)
         }
 
         func syncClients() -> SyncResult {

@@ -177,7 +177,10 @@ class LoginListViewController: SensitiveViewController {
     // Wrap the SQLiteLogins method to allow us to cancel it from our end.
     private func queryLogins(query: String) -> Deferred<Maybe<[Login]>> {
         let deferred = Deferred<Maybe<[Login]>>()
-        profile.logins.searchLoginsWithQuery(query) >>== { logins in
+        guard let logins = profile.logins else {
+            return deferMaybe([])
+        }
+        logins.searchLoginsWithQuery(query) >>== { logins in
             deferred.fillIfUnfilled(Maybe(success: logins.asArray()))
             succeed()
         }
@@ -221,14 +224,14 @@ private extension LoginListViewController {
     }
 
     @objc func tappedDelete() {
-        profile.logins.hasSyncedLogins().uponQueue(dispatch_get_main_queue()) { yes in
+        profile.logins?.hasSyncedLogins().uponQueue(dispatch_get_main_queue()) { yes in
             let deleteAlert = UIAlertController.deleteLoginAlertWithDeleteCallback({ [unowned self] _ in
                 // Delete here
                 let guidsToDelete = self.loginSelectionController.selectedIndexPaths.map { indexPath in
                     self.loginDataSource.loginAtIndexPath(indexPath)!.guid
                 }
 
-                self.profile.logins.removeLoginsWithGUIDs(guidsToDelete).uponQueue(dispatch_get_main_queue()) { _ in
+                self.profile.logins?.removeLoginsWithGUIDs(guidsToDelete).uponQueue(dispatch_get_main_queue()) { _ in
                     self.cancelSelection()
                     self.loadLogins()
                 }

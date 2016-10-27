@@ -40,7 +40,11 @@ class Authenticator {
 
         // Otherwise, try to look them up and show the prompt.
         if let loginsHelper = loginsHelper {
-            return findMatchingCredentialsForChallenge(challenge, fromLoginsProvider: loginsHelper.logins).bindQueue(dispatch_get_main_queue()) { result in
+            guard let loginsProvider = loginsHelper.logins else {
+                return deferMaybe(LoginDataError(description: "Logins not available"))
+            }
+            
+            return findMatchingCredentialsForChallenge(challenge, fromLoginsProvider: loginsProvider).bindQueue(dispatch_get_main_queue()) { result in
                 guard let credentials = result.successValue else {
                     return deferMaybe(result.failureValue ?? LoginDataError(description: "Unknown error when finding credentials"))
                 }

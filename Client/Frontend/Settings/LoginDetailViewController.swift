@@ -292,9 +292,9 @@ extension LoginDetailViewController: KeyboardHelperDelegate {
 extension LoginDetailViewController {
 
     func deleteLogin() {
-        profile.logins.hasSyncedLogins().uponQueue(dispatch_get_main_queue()) { yes in
+        profile.logins?.hasSyncedLogins().uponQueue(dispatch_get_main_queue()) { yes in
             let deleteAlert = UIAlertController.deleteLoginAlertWithDeleteCallback({ [unowned self] _ in
-                self.profile.logins.removeLoginByGUID(self.login.guid).uponQueue(dispatch_get_main_queue()) { _ in
+                self.profile.logins?.removeLoginByGUID(self.login.guid).uponQueue(dispatch_get_main_queue()) { _ in
                     self.navigationController?.popViewControllerAnimated(true)
                 }
             }, hasSyncedLogins: yes.successValue ?? true)
@@ -305,7 +305,7 @@ extension LoginDetailViewController {
 
     func SELonProfileDidFinishSyncing() {
         // Reload details after syncing.
-        profile.logins.getLoginDataForGUID(login.guid).uponQueue(dispatch_get_main_queue()) { result in
+        profile.logins?.getLoginDataForGUID(login.guid).uponQueue(dispatch_get_main_queue()) { result in
             if let syncedLogin = result.successValue {
                 self.login = syncedLogin
             }
@@ -338,7 +338,7 @@ extension LoginDetailViewController {
         login.update(password: password, username: username)
 
         if login.isValid.isSuccess {
-            profile.logins.updateLoginByGUID(login.guid, new: login, significant: true)
+            profile.logins?.updateLoginByGUID(login.guid, new: login, significant: true)
         } else if let oldUsername = oldUsername {
             login.update(password: oldPassword, username: oldUsername)
         }
