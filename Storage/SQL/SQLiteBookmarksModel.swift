@@ -554,22 +554,22 @@ class SQLiteBookmarkFolder: BookmarkFolder {
     }
 
     func removeItemWithGUID(guid: GUID) -> MemoryBookmarkFolder {
-        let without = cursor.asArray().filter { $0.guid == guid }
+        let without = cursor.asArray().filter { $0.guid != guid }
         return MemoryBookmarkFolder(guid: guid, title: title, children: without)
     }
 }
 
 class BookmarkFactory {
-    private class func addIcon(bookmark: BookmarkNode, row: SDRow) {
-        // TODO: share this logic with SQLiteHistory.
+    private class func faviconFromRow(row: SDRow) -> Favicon? {
         if let faviconURL = row["iconURL"] as? String,
            let date = row["iconDate"] as? Double,
            let faviconType = row["iconType"] as? Int,
            let type = IconType(rawValue: faviconType) {
-                bookmark.favicon = Favicon(url: faviconURL,
-                                           date: NSDate(timeIntervalSince1970: date),
-                                           type: type)
+                return Favicon(url: faviconURL,
+                               date: NSDate(timeIntervalSince1970: date),
+                               type: type)
         }
+        return nil
     }
 
     private class func livemarkFactory(row: SDRow) -> BookmarkItem {
@@ -580,7 +580,7 @@ class BookmarkFactory {
         let isEditable = row.getBoolean("isEditable")           // Defaults to false.
         let bookmark = BookmarkItem(guid: guid, title: title, url: url, isEditable: isEditable)
         bookmark.id = id
-        BookmarkFactory.addIcon(bookmark, row: row)
+        bookmark.favicon = faviconFromRow(row)
         return bookmark
     }
 
@@ -593,7 +593,7 @@ class BookmarkFactory {
         let isEditable = row.getBoolean("isEditable")           // Defaults to false.
         let bookmark = BookmarkItem(guid: guid, title: title, url: "about:blank", isEditable: isEditable)
         bookmark.id = id
-        BookmarkFactory.addIcon(bookmark, row: row)
+        bookmark.favicon = faviconFromRow(row)
         return bookmark
     }
 
@@ -613,11 +613,11 @@ class BookmarkFactory {
         let isEditable = row.getBoolean("isEditable")           // Defaults to false.
         let bookmark = BookmarkItem(guid: guid, title: title, url: url, isEditable: isEditable)
         bookmark.id = id
-        BookmarkFactory.addIcon(bookmark, row: row)
+        bookmark.favicon = faviconFromRow(row)
         return bookmark
     }
 
-    private class func folderFactory(row: SDRow) -> SQLiteBookmarkFolder {
+    private class func folderStubFactory(row: SDRow) -> BookmarkNode {
         let id = row["id"] as! Int
         let guid = row["guid"] as! String
         let isEditable = row.getBoolean("isEditable")           // Defaults to false.
@@ -625,10 +625,10 @@ class BookmarkFactory {
                     row["title"] as? String ??
                     SQLiteBookmarks.defaultFolderTitle
 
-        let folder = BookmarkFolder(guid: guid, title: title, isEditable: isEditable)
-        folder.id = id
-        BookmarkFactory.addIcon(folder, row: row)
-        return folder
+        let folderStub = BookmarkFolderStub(guid: guid, title: title, isEditable: isEditable)
+        folderStub.id = id
+        folderStub.favicon = faviconFromRow(row)
+        return folderStub
     }
 
     class func factory(row: SDRow) -> BookmarkNode {
@@ -640,7 +640,7 @@ class BookmarkFactory {
                 // This should never be hit: we exclude dynamic containers from our models.
                 fallthrough
             case .Folder:
-                return folderFactory(row)
+                return folderStubFactory(row)
             case .Separator:
                 return separatorFactory(row)
             case .Livemark:

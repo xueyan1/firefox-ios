@@ -184,7 +184,11 @@ class BookmarksPanel: SiteTableViewController, HomePanel {
     }
 
     override func tableView(tableView: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) -> UITableViewCell {
-        guard let source = source, bookmark = source.current[indexPath.row] else { return super.tableView(tableView, cellForRowAtIndexPath: indexPath) }
+        guard let source = source else {
+            return super.tableView(tableView, cellForRowAtIndexPath: indexPath)
+        }
+
+        let bookmark = source.current[indexPath.row]
         switch (bookmark) {
         case let item as BookmarkItem:
             let cell = super.tableView(tableView, cellForRowAtIndexPath: indexPath)
@@ -343,15 +347,14 @@ class BookmarksPanel: SiteTableViewController, HomePanel {
         let title = NSLocalizedString("Delete", tableName: "BookmarkPanel", comment: "Action button for deleting bookmarks in the bookmarks panel.")
 
         let delete = UITableViewRowAction(style: UITableViewRowActionStyle.Default, title: title, handler: { (action, indexPath) in
-            guard let bookmark = source.current[indexPath.row] else {
-                return
-            }
-
-            assert(!(bookmark is BookmarkFolder))
-            if bookmark is BookmarkFolder {
-                // TODO: check whether the folder is empty (excluding separators). If it isn't
-                // then we must ask the user to confirm. Bug 1232810.
-                log.debug("Not deleting folder.")
+            let bookmark = source.current[indexPath.row]
+            guard let bookmarkItem = bookmark as? BookmarkItem else {
+                if bookmark is BookmarkFolderStub {
+                    // TODO: check whether the folder is empty (excluding separators). If it isn't
+                    // then we must ask the user to confirm. Bug 1232810.
+                    log.debug("Not deleting folder.")
+                    return
+                }
                 return
             }
 
@@ -376,7 +379,7 @@ class BookmarksPanel: SiteTableViewController, HomePanel {
             self.tableView.endUpdates()
             self.updateEmptyPanelState()
 
-            NSNotificationCenter.defaultCenter().postNotificationName(BookmarkStatusChangedNotification, object: bookmark, userInfo:["added": false])
+            NSNotificationCenter.defaultCenter().postNotificationName(BookmarkStatusChangedNotification, object: bookmarkItem, userInfo:["added": false])
         })
 
         return [delete]

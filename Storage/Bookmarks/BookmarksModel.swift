@@ -84,6 +84,23 @@ extension BookmarkFolder {
 }
 
 /**
+ * A bookmark folder without children. Used for display purposes.
+ */
+public class BookmarkFolderStub: BookmarkNode {
+    public var id: Int? = nil
+    public let guid: GUID
+    public let title: String
+    public let isEditable: Bool
+    public var favicon: Favicon? = nil
+
+    init(guid: GUID, title: String, isEditable: Bool = false) {
+        self.guid = guid
+        self.title = title
+        self.isEditable = isEditable
+    }
+}
+
+/**
  * A model is a snapshot of the bookmarks store, suitable for backing a table view.
  *
  * Navigation through the folder hierarchy produces a sequence of models.
@@ -226,7 +243,7 @@ public class MemoryBookmarkFolder: BookmarkFolder, SequenceType {
     }
 
     public func removeItemWithGUID(guid: GUID) -> MemoryBookmarkFolder {
-        let without = children.filter { $0.guid == guid }
+        let without = children.filter { $0.guid != guid }
         return MemoryBookmarkFolder(guid: self.guid, title: self.title, children: without)
     }
 
