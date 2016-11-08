@@ -9,27 +9,30 @@ import Shared
 /**
  * The kinda-immutable base interface for bookmarks and folders.
  */
-public class BookmarkNode {
-    public var id: Int? = nil
-    public let guid: GUID
-    public let title: String
-    public let isEditable: Bool
-    public var favicon: Favicon? = nil
+public protocol BookmarkNode {
+    var id: Int? { get }
+    var guid: GUID { get }
+    var title: String { get }
+    var isEditable: Bool { get }
+    var favicon: Favicon? { get set }
+    var canDelete: Bool { get }
+}
 
-    init(guid: GUID, title: String, isEditable: Bool=false) {
-        self.guid = guid
-        self.title = title
-        self.isEditable = isEditable
-    }
-
+extension BookmarkNode {
     public var canDelete: Bool {
         return self.isEditable
     }
 }
 
 public class BookmarkSeparator: BookmarkNode {
+    public var id: Int? = nil
+    public let guid: GUID
+    public let title = "—"
+    public let isEditable = false
+    public var favicon: Favicon? = nil
+
     init(guid: GUID) {
-        super.init(guid: guid, title: "—")
+        self.guid = guid
     }
 }
 
@@ -39,11 +42,20 @@ public class BookmarkSeparator: BookmarkNode {
  * To modify this, issue changes against the backing store and get an updated model.
  */
 public class BookmarkItem: BookmarkNode {
+    public var id: Int? = nil
+    public let guid: GUID
+    public let title: String
+    public let isEditable: Bool
+
+    public var favicon: Favicon? = nil
+
     public let url: String!
 
     public init(guid: String, title: String, url: String, isEditable: Bool=false) {
         self.url = url
-        super.init(guid: guid, title: title, isEditable: isEditable)
+        self.guid = guid
+        self.title = title
+        self.isEditable = isEditable
     }
 }
 
@@ -51,21 +63,23 @@ public class BookmarkItem: BookmarkNode {
  * A folder is an immutable abstraction over a named
  * thing that can return its child nodes by index.
  */
-public class BookmarkFolder: BookmarkNode {
-    public var count: Int { return 0 }
-    public subscript(index: Int) -> BookmarkNode? { return nil }
+public protocol BookmarkFolder: BookmarkNode {
+    var count: Int { get }
+    var canDelete: Bool { get }
 
-    public func itemIsEditableAtIndex(index: Int) -> Bool {
-        return self[index]?.canDelete ?? false
-    }
+    subscript(index: Int) -> BookmarkNode { get}
 
-    override public var canDelete: Bool {
+    func itemIsEditableAtIndex(index: Int) -> Bool
+    func removeItemWithGUID(guid: GUID) -> MemoryBookmarkFolder
+}
+
+extension BookmarkFolder {
+    public var canDelete: Bool {
         return false
     }
-
-    public func removeItemWithGUID(guid: GUID) -> MemoryBookmarkFolder {
-        let without = (0..<count).flatMap { self[$0]?.guid != guid ? self[$0] : nil }
-        return MemoryBookmarkFolder(guid: self.guid, title: self.title, children: without)
+    
+    public func itemIsEditableAtIndex(index: Int) -> Bool {
+        return self[index].canDelete ?? false
     }
 }
 
@@ -154,11 +168,17 @@ public protocol BookmarksModelFactory {
  * A folder that contains an array of children.
  */
 public class MemoryBookmarkFolder: BookmarkFolder, SequenceType {
+    public let id: Int? = nil
+    public let guid: GUID
+    public let title: String
+    public let isEditable = false
+
     let children: [BookmarkNode]
 
     public init(guid: GUID, title: String, children: [BookmarkNode]) {
         self.children = children
-        super.init(guid: guid, title: title)
+        self.guid = guid
+        self.title = title
     }
 
     public struct BookmarkNodeGenerator: GeneratorType {
@@ -179,7 +199,7 @@ public class MemoryBookmarkFolder: BookmarkFolder, SequenceType {
         }
     }
 
-    override public var favicon: Favicon? {
+    public var favicon: Favicon? {
         get {
             if let path = NSBundle.mainBundle().pathForResource("bookmarkFolder", ofType: "png") {
                 let url = NSURL(fileURLWithPath: path)
@@ -191,18 +211,23 @@ public class MemoryBookmarkFolder: BookmarkFolder, SequenceType {
         }
     }
 
-    override public var count: Int {
+    public var count: Int {
         return children.count
     }
 
-    override public subscript(index: Int) -> BookmarkNode {
+    public subscript(index: Int) -> BookmarkNode {
         get {
             return children[index]
         }
     }
 
-    override public func itemIsEditableAtIndex(index: Int) -> Bool {
+    public func itemIsEditableAtIndex(index: Int) -> Bool {
         return true
+    }
+
+    public func removeItemWithGUID(guid: GUID) -> MemoryBookmarkFolder {
+        let without = children.filter { $0.guid == guid }
+        return MemoryBookmarkFolder(guid: self.guid, title: self.title, children: without)
     }
 
     public func generate() -> BookmarkNodeGenerator {
@@ -250,20 +275,28 @@ private extension SuggestedSite {
 }
 
 public class PrependedBookmarkFolder: BookmarkFolder {
+    public let id: Int? = nil
+    public let guid: GUID
+    public let title: String
+
+    public let isEditable = false
+    public var favicon: Favicon? = nil
+    
     private let main: BookmarkFolder
     private let prepend: BookmarkNode
 
     init(main: BookmarkFolder, prepend: BookmarkNode) {
         self.main = main
         self.prepend = prepend
-        super.init(guid: main.guid, title: main.guid)
+        self.guid = main.guid
+        self.title = main.guid
     }
 
-    override public var count: Int {
+    public var count: Int {
         return self.main.count + 1
     }
 
-    override public subscript(index: Int) -> BookmarkNode? {
+    public subscript(index: Int) -> BookmarkNode {
         if index == 0 {
             return self.prepend
         }
@@ -271,8 +304,12 @@ public class PrependedBookmarkFolder: BookmarkFolder {
         return self.main[index - 1]
     }
 
-    override public func itemIsEditableAtIndex(index: Int) -> Bool {
+    public func itemIsEditableAtIndex(index: Int) -> Bool {
         return index > 0 && self.main.itemIsEditableAtIndex(index - 1)
+    }
+    
+    public func removeItemWithGUID(guid: GUID) -> MemoryBookmarkFolder {
+        return main.removeItemWithGUID(guid)
     }
 }
 

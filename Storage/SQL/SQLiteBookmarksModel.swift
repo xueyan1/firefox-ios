@@ -531,19 +531,31 @@ extension SQLiteBookmarks {
 }
 
 class SQLiteBookmarkFolder: BookmarkFolder {
+    var id: Int? = nil
+    let guid: GUID
+    let title: String
+    var isEditable: Bool = false
+    var favicon: Favicon? = nil
+
     private let cursor: Cursor<BookmarkNode>
-    override var count: Int {
+    var count: Int {
         return cursor.count
     }
 
-    override subscript(index: Int) -> BookmarkNode {
+    subscript(index: Int) -> BookmarkNode {
         let bookmark = cursor[index]
         return bookmark! as BookmarkNode
     }
 
     init(guid: String, title: String, children: Cursor<BookmarkNode>) {
         self.cursor = children
-        super.init(guid: guid, title: title)
+        self.guid = guid
+        self.title = title
+    }
+
+    func removeItemWithGUID(guid: GUID) -> MemoryBookmarkFolder {
+        let without = cursor.asArray().filter { $0.guid == guid }
+        return MemoryBookmarkFolder(guid: guid, title: title, children: without)
     }
 }
 
@@ -605,7 +617,7 @@ class BookmarkFactory {
         return bookmark
     }
 
-    private class func folderFactory(row: SDRow) -> BookmarkFolder {
+    private class func folderFactory(row: SDRow) -> SQLiteBookmarkFolder {
         let id = row["id"] as! Int
         let guid = row["guid"] as! String
         let isEditable = row.getBoolean("isEditable")           // Defaults to false.
