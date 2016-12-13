@@ -393,8 +393,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         }
 
         if profile.hasSyncableAccount() {
-            let backgroundQueue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0)
-            profile.syncManager.syncEverything().uponQueue(backgroundQueue) { _ in
+            profile.syncManager.syncEverything().uponQueue(dispatch_get_main_queue()) { _ in
                 self.shutdownProfileWhenNotActive(application)
                 application.endBackgroundTask(taskId)
             }
