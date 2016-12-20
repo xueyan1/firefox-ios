@@ -80,7 +80,7 @@ public class HistorySynchronizer: IndependentRecordSynchronizer, Synchronizer {
     // 3. bulkInsert all failed updates in one go.
     // 4. Store all remote visits for all places in one go, constructing a single sequence of visits.
     func applyIncomingToStorage(storage: SyncableHistory, records: [Record<HistoryPayload>],
-                                tracker: SynchronizerTracker) -> Success {
+                                stats: SyncOperationStats) -> Success {
 
         // Skip over at most this many failing records before aborting the sync.
         let maskSomeFailures = self.mask(3)
@@ -115,12 +115,12 @@ public class HistorySynchronizer: IndependentRecordSynchronizer, Synchronizer {
                     let reason = result.failureValue?.description ?? "unknown reason"
                     log.error("Record application failed: \(reason)")
 
-                    tracker.incomingCounts.failed += 1
+                    stats.recordCounter.incomingFailed += 1
                 } else {
                     // For history, applied and succeeded are the same thing since we don't support two-phase
                     // for history records.
-                    tracker.incomingCounts.applied += 1
-                    tracker.incomingCounts.succeeded += 1
+                    stats.recordCounter.incomingApplied += 1
+                    stats.recordCounter.incomingSucceeded += 1
                 }
                 return result
             }).bind(maskSomeFailures)
@@ -129,19 +129,22 @@ public class HistorySynchronizer: IndependentRecordSynchronizer, Synchronizer {
         return self.applyIncomingRecords(records, apply: applyRecord)
     }
 
-    private func uploadModifiedPlaces(places: [(Place, [Visit])], lastTimestamp: Timestamp, fromStorage storage: SyncableHistory, withServer storageClient: Sync15CollectionClient<HistoryPayload>) -> DeferredTimestamp {
+    private func uploadModifiedPlaces(places: [(Place, [Visit])], lastTimestamp: Timestamp, fromStorage storage: SyncableHistory,
+                                      withServer storageClient: Sync15CollectionClient<HistoryPayload>, stats: SyncOperationStats) -> DeferredTimestamp {
         log.info("Preparing upload…")
 
         // Build sequences of 1000 history items, sequence by sequence
         // These will be uploaded in smaller batches by the upload batcher, but we chunk here
         // in order to bound peak memory usage when we call makeHistoryRecord below.
         let toUpload = chunk(places, by: 1000)
-        let perChunk: (ArraySlice<(Place, [Visit])>, Timestamp) -> DeferredTimestamp = { (records, timestamp) in
+        let perChunk: (ArraySlice<(Place, [Visit])>, Timestamp) -> DeferredTimestamp = { records, previousResult in
             let recs = records.map(makeHistoryRecord)
             log.info("Uploading \(recs.count) history items…")
-            return self.uploadRecords(recs, lastTimestamp: timestamp, storageClient: storageClient) { result, lastModified in
+            stats.recordCounter.outgoingSent += recs.count
+            return self.uploadRecords(recs, lastTimestamp: lastTimestamp, storageClient: storageClient) { result, lastModified in
                 // We don't do anything with failed.
-                return storage.markAsSynchronized(result.success, modified: lastModified ?? timestamp)
+                stats.recordCounter.outgoingSentFailed += result.failed.count
+                return storage.markAsSynchronized(result.success, modified: lastModified ?? lastTimestamp)
             }
         }
 
@@ -149,20 +152,22 @@ public class HistorySynchronizer: IndependentRecordSynchronizer, Synchronizer {
         return walk(toUpload, start: start, f: perChunk)
     }
 
-    private func uploadDeletedPlaces(guids: [GUID], lastTimestamp: Timestamp, fromStorage storage: SyncableHistory, withServer storageClient: Sync15CollectionClient<HistoryPayload>) -> DeferredTimestamp {
+    private func uploadDeletedPlaces(guids: [GUID], lastTimestamp: Timestamp, fromStorage storage: SyncableHistory,
+                                     withServer storageClient: Sync15CollectionClient<HistoryPayload>, stats: SyncOperationStats) -> DeferredTimestamp {
 
         let records = guids.map(makeDeletedHistoryRecord)
+        stats.recordCounter.outgoingSent += records.count
 
         // Deletions are smaller, so upload 100 at a time.
         return self.uploadRecords(records, lastTimestamp: lastTimestamp, storageClient: storageClient) { result, lastModified in
-            storage.markAsDeleted(result.success) >>> always(lastModified ?? lastTimestamp)
+            stats.recordCounter.outgoingSentFailed += result.failed.count
+            return storage.markAsDeleted(result.success) >>> always(lastModified ?? lastTimestamp)
         }
     }
 
     private func uploadOutgoingFromStorage(storage: SyncableHistory, lastTimestamp: Timestamp,
                                            withServer storageClient: Sync15CollectionClient<HistoryPayload>,
-                                                      tracker: SynchronizerTracker) -> Success {
-
+                                                      stats: SyncOperationStats) -> Success {
         var workWasDone = false
         let uploadDeleted: Timestamp -> DeferredTimestamp = { timestamp in
             storage.getDeletedHistoryToUpload()
@@ -171,7 +176,8 @@ public class HistorySynchronizer: IndependentRecordSynchronizer, Synchronizer {
                     workWasDone = true
                 }
                 log.info("Uploading \(guids.count) deleted places.")
-                return self.uploadDeletedPlaces(guids, lastTimestamp: timestamp, fromStorage: storage, withServer: storageClient)
+                return self.uploadDeletedPlaces(guids, lastTimestamp: timestamp, fromStorage: storage,
+                                                withServer: storageClient, stats: stats)
             }
         }
 
@@ -182,7 +188,8 @@ public class HistorySynchronizer: IndependentRecordSynchronizer, Synchronizer {
                         workWasDone = true
                     }
                     log.info("Uploading \(places.count) modified places.")
-                    return self.uploadModifiedPlaces(places, lastTimestamp: timestamp, fromStorage: storage, withServer: storageClient)
+                    return self.uploadModifiedPlaces(places, lastTimestamp: timestamp, fromStorage: storage,
+                                                     withServer: storageClient, stats: stats)
             }
         }
 
@@ -207,7 +214,7 @@ public class HistorySynchronizer: IndependentRecordSynchronizer, Synchronizer {
      */
     private func go(info: InfoCollections, greenLight: () -> Bool,
                     downloader: BatchingDownloader<HistoryPayload>, history: SyncableHistory,
-                    tracker: SynchronizerTracker) -> SyncResult {
+                    stats: SyncOperationStats) -> SyncResult {
 
         if !greenLight() {
             log.info("Green light turned red. Stopping history download.")
@@ -215,7 +222,7 @@ public class HistorySynchronizer: IndependentRecordSynchronizer, Synchronizer {
         }
 
         func applyBatched() -> Success {
-            return self.applyIncomingToStorage(history, records: downloader.retrieve(), tracker: tracker)
+            return self.applyIncomingToStorage(history, records: downloader.retrieve(), stats: stats)
                >>> effect(downloader.advance)
         }
 
@@ -235,7 +242,7 @@ public class HistorySynchronizer: IndependentRecordSynchronizer, Synchronizer {
                 log.debug("Running another batch.")
                 // This recursion is fine because Deferred always pushes callbacks onto a queue.
                 return applyBatched()
-                    >>> { self.go(info, greenLight: greenLight, downloader: downloader, history: history, tracker: tracker) }
+                    >>> { self.go(info, greenLight: greenLight, downloader: downloader, history: history, stats: stats) }
             case .Interrupted:
                 log.info("Interrupted. Aborting batching this time.")
                 return deferMaybe(.Partial)
@@ -251,10 +258,10 @@ public class HistorySynchronizer: IndependentRecordSynchronizer, Synchronizer {
     }
 
     public func synchronizeLocalHistory(history: SyncableHistory, withServer storageClient: Sync15StorageClient, info: InfoCollections, greenLight: () -> Bool) -> SyncResult {
-        let tracker = SynchronizerTracker()
+        let stats = SyncOperationStats()
 
         if let reason = self.reasonToNotSync(storageClient) {
-            // tracker -> failureReason
+            // TODO: Implement failureReason for SyncOperationStats
             return deferMaybe(.NotStarted(reason))
         }
 
@@ -277,7 +284,7 @@ public class HistorySynchronizer: IndependentRecordSynchronizer, Synchronizer {
             self.lastFetched = 0
         }
 
-        return self.go(info, greenLight: greenLight, downloader: downloader, history: history, tracker: tracker)
+        return self.go(info, greenLight: greenLight, downloader: downloader, history: history, stats: stats)
             >>== { syncResult in
                 switch syncResult {
                 case .Completed:
@@ -285,7 +292,7 @@ public class HistorySynchronizer: IndependentRecordSynchronizer, Synchronizer {
                     return self.uploadOutgoingFromStorage(history,
                                                           lastTimestamp: 0,
                                                           withServer: historyClient,
-                                                          tracker: tracker)
+                                                          stats: stats)
                        >>> { deferMaybe(.Completed) }
 
                 // If we didn't finish downloading, do nothing further -- just pass

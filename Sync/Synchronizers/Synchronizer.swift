@@ -241,54 +241,21 @@ extension BaseCollectionSynchronizer: ResettableSynchronizer {
     }
 }
 
-public class SynchronizerTracker {
-    var incomingCounts: EngineCounts
-    var sentCount: Int
-    var sentFailedCount: Int
-
-    init() {
-        incomingCounts = EngineCounts()
-        sentCount = 0
-        sentFailedCount = 0
-    }
+/**
+ * Used to keep track of information during a sync operation such as number of records applied and failed
+ * for use in telemetry.
+ */
+public class SyncOperationStats {
+    var recordCounter = RecordCounter()
+    init() {}
 }
 
-public struct EngineCounts {
-    var applied: Int = 0
-    var succeeded: Int = 0
-    var failed: Int = 0
-    var newFailed: Int = 0
-    var reconciled: Int = 0
-}
-
-public struct ValidationInfo {
-    let version = 4
-    let checked: Int
-    let took: UInt64
-    let problems: [(ValidationProblem, Int)]
-}
-
-// Desktop Problems
-enum ValidationProblem {
-    case clientMissing
-    case serverMissing
-    case serverDeleted
-    case serverUnexpected
-    case structuralDifferences
-    case differences
-    case missingIDs
-    case rootOnServer
-    case duplicates
-    case parentChildMismatches
-    case cycles
-    case clientCycles
-    case badClientRooots
-    case orphans
-    case missingChildren
-    case deletedChildren
-    case multipleParents
-    case deletedParents
-    case childrenOnNonFolder
-    case duplicateChildren
-    case parentNotFolder
+public struct RecordCounter {
+    var incomingApplied: Int = 0
+    var incomingSucceeded: Int = 0
+    var incomingFailed: Int = 0
+    var incomingNewFailed: Int = 0
+    var incomingReconciled: Int = 0
+    var outgoingSent: Int = 0
+    var outgoingSentFailed: Int = 0
 }
