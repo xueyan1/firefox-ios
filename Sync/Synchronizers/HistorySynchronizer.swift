@@ -114,7 +114,6 @@ public class HistorySynchronizer: IndependentRecordSynchronizer, Synchronizer {
                 if result.isFailure {
                     let reason = result.failureValue?.description ?? "unknown reason"
                     log.error("Record application failed: \(reason)")
-
                     stats.recordCounter.incomingFailed += 1
                 } else {
                     // For history, applied and succeeded are the same thing since we don't support two-phase
@@ -137,14 +136,14 @@ public class HistorySynchronizer: IndependentRecordSynchronizer, Synchronizer {
         // These will be uploaded in smaller batches by the upload batcher, but we chunk here
         // in order to bound peak memory usage when we call makeHistoryRecord below.
         let toUpload = chunk(places, by: 1000)
-        let perChunk: (ArraySlice<(Place, [Visit])>, Timestamp) -> DeferredTimestamp = { records, previousResult in
+        let perChunk: (ArraySlice<(Place, [Visit])>, Timestamp) -> DeferredTimestamp = { (records, timestamp) in
             let recs = records.map(makeHistoryRecord)
             log.info("Uploading \(recs.count) history items…")
             stats.recordCounter.outgoingSent += recs.count
-            return self.uploadRecords(recs, lastTimestamp: lastTimestamp, storageClient: storageClient) { result, lastModified in
+            return self.uploadRecords(recs, lastTimestamp: timestamp, storageClient: storageClient) { result, lastModified in
                 // We don't do anything with failed.
                 stats.recordCounter.outgoingSentFailed += result.failed.count
-                return storage.markAsSynchronized(result.success, modified: lastModified ?? lastTimestamp)
+                return storage.markAsSynchronized(result.success, modified: lastModified ?? timestamp)
             }
         }
 
@@ -242,7 +241,7 @@ public class HistorySynchronizer: IndependentRecordSynchronizer, Synchronizer {
                 log.debug("Running another batch.")
                 // This recursion is fine because Deferred always pushes callbacks onto a queue.
                 return applyBatched()
-                    >>> { self.go(info, greenLight: greenLight, downloader: downloader, history: history, stats: stats) }
+                   >>> { self.go(info, greenLight: greenLight, downloader: downloader, history: history, stats: stats) }
             case .Interrupted:
                 log.info("Interrupted. Aborting batching this time.")
                 return deferMaybe(.Partial)
