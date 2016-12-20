@@ -148,13 +148,13 @@ public class TabsSynchronizer: TimestampedSingleCollectionSynchronizer, Synchron
             if !self.remoteHasChanges(info) {
                 // upload local tabs if they've changed or we're in a fresh start.
                 uploadOurTabs(localTabs, toServer: tabsClient)
-                return deferMaybe(.Completed)
+                return deferMaybe(.Completed(.noStats))
             }
 
             return tabsClient.getSince(self.lastFetched)
                 >>== onResponseReceived
                 >>> { self.uploadOurTabs(localTabs, toServer: tabsClient) }
-                >>> { deferMaybe(.Completed) }
+                >>> { deferMaybe(.Completed(.noStats)) }
         }
 
         log.error("Couldn't make tabs factory.")

@@ -129,7 +129,7 @@ public class BookmarksMirrorer {
                 return self.applyRecordsFromBatcher()
                    >>> effect(self.downloader.advance)
                    >>> self.storage.doneApplyingRecordsAfterDownload
-                   >>> always(SyncStatus.Completed)
+                   >>> always(SyncStatus.Completed(.noStats))
             case .Incomplete:
                 log.debug("Running another batch.")
                 // This recursion is fine because Deferred always pushes callbacks onto a queue.
@@ -142,7 +142,7 @@ public class BookmarksMirrorer {
             case .NoNewData:
                 log.info("No new data. No need to continue batching.")
                 self.downloader.advance()
-                return deferMaybe(SyncStatus.Completed)
+                return deferMaybe(SyncStatus.Completed(.noStats))
             }
         }
     }

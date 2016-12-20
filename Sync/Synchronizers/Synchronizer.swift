@@ -76,7 +76,7 @@ public protocol Synchronizer {
  * for batch scheduling, success-case backoff and so on.
  */
 public enum SyncStatus {
-    case Completed                 // TODO: we pick up a bunch of info along the way. Pass it along.
+    case Completed (SyncStats)
     case NotStarted(SyncNotStartedReason)
     case Partial
 
@@ -245,9 +245,21 @@ extension BaseCollectionSynchronizer: ResettableSynchronizer {
  * Used to keep track of information during a sync operation such as number of records applied and failed
  * for use in telemetry.
  */
-public class SyncOperationStats {
+public typealias DeferredStats = Deferred<Maybe<SyncStats>>
+public class SyncStats {
     var recordCounter = RecordCounter()
+    
     init() {}
+
+    public static var noStats: SyncStats {
+        return SyncStats()
+    }
+}
+
+public func +(statsL: SyncStats, statsR: SyncStats) -> SyncStats {
+    let combinedStats = SyncStats()
+    combinedStats.recordCounter = statsL.recordCounter + statsR.recordCounter
+    return combinedStats
 }
 
 public struct RecordCounter {
@@ -259,3 +271,16 @@ public struct RecordCounter {
     var outgoingSent: Int = 0
     var outgoingSentFailed: Int = 0
 }
+
+private func +(recordCounterL: RecordCounter, recordCounterR: RecordCounter) -> RecordCounter {
+    var combinedCounter = RecordCounter()
+    combinedCounter.incomingApplied = recordCounterL.incomingApplied + recordCounterR.incomingApplied
+    combinedCounter.incomingSucceeded = recordCounterL.incomingSucceeded + recordCounterR.incomingSucceeded
+    combinedCounter.incomingFailed = recordCounterL.incomingFailed + recordCounterR.incomingFailed
+    combinedCounter.incomingNewFailed = recordCounterL.incomingNewFailed + recordCounterR.incomingNewFailed
+    combinedCounter.incomingReconciled = recordCounterL.incomingReconciled + recordCounterR.incomingReconciled
+    combinedCounter.outgoingSent = recordCounterL.outgoingSent + recordCounterR.outgoingSent
+    combinedCounter.outgoingSentFailed = recordCounterL.outgoingSentFailed + recordCounterR.outgoingSentFailed
+    return combinedCounter
+}
+

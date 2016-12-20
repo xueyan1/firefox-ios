@@ -173,12 +173,12 @@ class MergeApplier {
     func go() -> SyncResult {
         guard self.greenLight() else {
             log.info("Green light turned red; not merging bookmarks.")
-            return deferMaybe(SyncStatus.Completed)
+            return deferMaybe(SyncStatus.Completed(.noStats))
         }
 
         return self.merger.merge()
           >>== self.applyResult
-           >>> always(SyncStatus.Completed)
+           >>> always(SyncStatus.Completed(.noStats))
     }
 }
 

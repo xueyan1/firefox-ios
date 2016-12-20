@@ -353,7 +353,7 @@ public class ClientsSynchronizer: TimestampedSingleCollectionSynchronizer, Synch
             log.debug("No remote changes for clients. (Last fetched \(self.lastFetched).)")
             return self.maybeUploadOurRecord(false, ifUnmodifiedSince: nil, toServer: clientsClient)
                 >>> { self.uploadClientCommands(toLocalClients: localClients, withServer: clientsClient) }
-                >>> { deferMaybe(.Completed) }
+                >>> { deferMaybe(.Completed(.noStats)) }
         }
 
         // TODO: some of the commands we process might involve wiping collections or the
@@ -364,6 +364,6 @@ public class ClientsSynchronizer: TimestampedSingleCollectionSynchronizer, Synch
                 return self.wipeIfNecessary(localClients)
                     >>> { self.applyStorageResponse(response, toLocalClients: localClients, withServer: clientsClient) }
             }
-            >>> { deferMaybe(.Completed) }
+            >>> { deferMaybe(.Completed(.noStats)) }
     }
 }

@@ -183,6 +183,6 @@ public class LoginsSynchronizer: IndependentRecordSynchronizer, Synchronizer {
             // to the last successfully applied record timestamp, no matter where we fail.
             // There's no need to do the upload before bumping -- the storage of local changes is stable.
             >>> { self.uploadOutgoingFromStorage(logins, lastTimestamp: 0, withServer: passwordsClient) }
-            >>> { return deferMaybe(.Completed) }
+            >>> { return deferMaybe(.Completed(.noStats)) }
     }
 }
