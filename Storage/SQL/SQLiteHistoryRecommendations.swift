@@ -39,7 +39,7 @@ extension SQLiteHistory: HistoryRecommendations {
         let siteProjection = "historyID, url, title, guid, visitCount, visitDate, is_bookmarked"
         let nonRecentHistory =
             "SELECT \(siteProjection) FROM (" +
-            "   SELECT \(TableHistory).id as historyID, url, title, guid, visitDate," +
+            "   SELECT \(TableHistory).id as historyID, url, title, guid, visitDate, \(TableHistory).domain_id," +
             "       (SELECT COUNT(1) FROM \(TableVisits) WHERE s = \(TableVisits).siteID) AS visitCount," +
             "       (SELECT COUNT(1) FROM \(ViewBookmarksLocalOnMirror) WHERE \(ViewBookmarksLocalOnMirror).bmkUri == url) AS is_bookmarked" +
             "   FROM (" +
@@ -50,6 +50,10 @@ extension SQLiteHistory: HistoryRecommendations {
             "       ORDER BY visitDate DESC" +
             "   )" +
             "   LEFT JOIN \(TableHistory) ON \(TableHistory).id = s" +
+            "   INNER JOIN (" +
+            "       SELECT \(TableHistory).domain_id AS domain_id, MAX(\(TableHistory).id) AS history_id FROM \(TableHistory)" +
+            "       GROUP BY \(TableHistory).domain_id" +
+            "   ) AS domains ON domains.domain_id = \(TableHistory).domain_id AND \(TableHistory).id = history_id" +
             "   WHERE visitCount <= 3 AND title NOT NULL AND title != '' AND is_bookmarked == 0 AND url NOT IN" +
             "       (SELECT \(TableActivityStreamBlocklist).url FROM \(TableActivityStreamBlocklist))" +
             "        AND \(TableHistory).domain_id NOT IN ("
@@ -59,13 +63,17 @@ extension SQLiteHistory: HistoryRecommendations {
 
         let bookmarkHighlights =
             "SELECT \(siteProjection) FROM (" +
-            "   SELECT \(TableHistory).id AS historyID, \(TableHistory).url AS url, \(TableHistory).title AS title, guid, NULL AS visitDate, (SELECT count(1) FROM visits WHERE \(TableVisits).siteID = \(TableHistory).id) as visitCount, 1 AS is_bookmarked" +
+            "   SELECT \(TableHistory).id AS historyID, \(TableHistory).url AS url, \(TableHistory).title AS title, guid, \(TableHistory).domain_id, NULL AS visitDate, (SELECT count(1) FROM visits WHERE \(TableVisits).siteID = \(TableHistory).id) as visitCount, 1 AS is_bookmarked" +
             "   FROM (" +
             "       SELECT bmkUri" +
             "       FROM \(ViewBookmarksLocalOnMirror)" +
             "       WHERE \(ViewBookmarksLocalOnMirror).server_modified > ? OR \(ViewBookmarksLocalOnMirror).local_modified > ?" +
             "   )" +
             "   LEFT JOIN \(TableHistory) ON \(TableHistory).url = bmkUri" +
+            "   INNER JOIN (" +
+            "       SELECT \(TableHistory).domain_id AS domain_id, MAX(\(TableHistory).id) AS history_id FROM \(TableHistory)" +
+            "       GROUP BY \(TableHistory).domain_id" +
+            "   ) AS domains ON domains.domain_id = \(TableHistory).domain_id AND \(TableHistory).id = history_id" +
             "   WHERE visitCount >= 3 AND \(TableHistory).title NOT NULL and \(TableHistory).title != '' AND url NOT IN" +
             "       (SELECT \(TableActivityStreamBlocklist).url FROM \(TableActivityStreamBlocklist))" +
             "   LIMIT \(bookmarkLimit)" +
