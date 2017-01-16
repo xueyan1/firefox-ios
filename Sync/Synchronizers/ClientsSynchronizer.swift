@@ -266,19 +266,26 @@ public class ClientsSynchronizer: TimestampedSingleCollectionSynchronizer, Synch
 
         let iUS: Timestamp? = ifUnmodifiedSince ?? ((lastUpload == 0) ? nil : lastUpload)
 
+        var uploadStats = SyncUploadStats()
         return storageClient.put(getOurClientRecord(), ifUnmodifiedSince: iUS)
             >>== { resp in
                 if let ts = resp.metadata.lastModifiedMilliseconds {
                     // Protocol says this should always be present for success responses.
                     log.debug("Client record upload succeeded. New timestamp: \(ts).")
                     self.clientRecordLastUpload = ts
+                    uploadStats.sent += 1
+                } else {
+                    uploadStats.sentFailed += 1
                 }
+                self.statsDelegate?.engineDidGenerateUploadStats(uploadStats)
                 return succeed()
         }
     }
 
     private func applyStorageResponse(response: StorageResponse<[Record<ClientPayload>]>, toLocalClients localClients: RemoteClientsAndTabs, withServer storageClient: Sync15CollectionClient<ClientPayload>) -> Success {
         log.debug("Applying clients response.")
+
+        var downloadStats = SyncDownloadStats()
 
         let records = response.value
         let responseTimestamp = response.metadata.lastModifiedMilliseconds
@@ -307,10 +314,18 @@ public class ClientsSynchronizer: TimestampedSingleCollectionSynchronizer, Synch
             }
         }
 
+        downloadStats.applied += toInsert.count
+
         // Apply remote changes.
         // Collect commands from our own record and reupload if necessary.
         // Then run the commands and return.
         return localClients.insertOrUpdateClients(toInsert)
+            >>== { succeeded in
+                downloadStats.succeeded += succeeded
+                downloadStats.failed += (toInsert.count - succeeded)
+                self.statsDelegate?.engineDidGenerateApplyStats(downloadStats)
+                return succeed()
+            }
             >>== { self.processCommandsFromRecord(ours, withServer: storageClient) }
             >>== { (shouldUpload, commands) in
                 return self.maybeUploadOurRecord(shouldUpload, ifUnmodifiedSince: ours?.modified, toServer: storageClient)

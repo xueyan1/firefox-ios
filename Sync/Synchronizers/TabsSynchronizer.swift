@@ -67,6 +67,9 @@ public class TabsSynchronizer: TimestampedSingleCollectionSynchronizer, Synchron
             let tabsRecord = self.createOwnTabsRecord(tabs)
             log.debug("Uploading our tabs: \(tabs.count).")
 
+            var uploadStats = SyncUploadStats()
+            uploadStats.sent += 1
+
             // We explicitly don't send If-Unmodified-Since, because we always
             // want our upload to succeed -- we own the record.
             return tabsClient.put(tabsRecord, ifUnmodifiedSince: nil) >>== { resp in
@@ -74,9 +77,11 @@ public class TabsSynchronizer: TimestampedSingleCollectionSynchronizer, Synchron
                     // Protocol says this should always be present for success responses.
                     log.debug("Tabs record upload succeeded. New timestamp: \(ts).")
                     self.tabsRecordLastUpload = ts
+                } else {
+                    uploadStats.sentFailed += 1
                 }
                 return succeed()
-            }
+            } >>== effect({ self.statsDelegate?.engineDidGenerateUploadStats(uploadStats) })
         }
     }
 
@@ -84,14 +89,23 @@ public class TabsSynchronizer: TimestampedSingleCollectionSynchronizer, Synchron
         func onResponseReceived(response: StorageResponse<[Record<TabsPayload>]>) -> Success {
 
             func afterWipe() -> Success {
+                var downloadStats = SyncDownloadStats()
+
                 let doInsert: (Record<TabsPayload>) -> Deferred<Maybe<(Int)>> = { record in
                     let remotes = record.payload.isValid() ? record.payload.remoteTabs : []
                     let ins = localTabs.insertOrUpdateTabsForClientGUID(record.id, tabs: remotes)
+
+                    // Since tabs are all sent within a single record, we don't count number of tabs applied
+                    // but number of records. In this case it's just one.
+                    downloadStats.applied += 1
                     ins.upon() { res in
                         if let inserted = res.successValue {
                             if inserted != remotes.count {
                                 log.warning("Only inserted \(inserted) tabs, not \(remotes.count). Malformed or missing client?")
                             }
+                            downloadStats.applied += 1
+                        } else {
+                            downloadStats.failed += 1
                         }
                     }
                     return ins
@@ -123,7 +137,7 @@ public class TabsSynchronizer: TimestampedSingleCollectionSynchronizer, Synchron
                             self.lastFetched = responseTimestamp!
                             return succeed()
                         }
-                }
+                } >>== effect({ self.statsDelegate?.engineDidGenerateApplyStats(downloadStats) })
             }
 
             // If this is a fresh start, do a wipe.

@@ -39,8 +39,8 @@ public protocol RemoteClientsAndTabs: SyncCommands {
     func getClients() -> Deferred<Maybe<[RemoteClient]>>
     func getClientsAndTabs() -> Deferred<Maybe<[ClientAndTabs]>>
     func getTabsForClientWithGUID(guid: GUID?) -> Deferred<Maybe<[RemoteTab]>>
-    func insertOrUpdateClient(client: RemoteClient) -> Deferred<Maybe<()>>
-    func insertOrUpdateClients(clients: [RemoteClient]) -> Deferred<Maybe<()>>
+    func insertOrUpdateClient(client: RemoteClient) -> Deferred<Maybe<Int>>
+    func insertOrUpdateClients(clients: [RemoteClient]) -> Deferred<Maybe<Int>>
 
     // Returns number of tabs inserted.
     func insertOrUpdateTabs(tabs: [RemoteTab]) -> Deferred<Maybe<Int>> // Insert into the local client.
