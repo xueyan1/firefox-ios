@@ -80,6 +80,7 @@ public class HistorySynchronizer: IndependentRecordSynchronizer, Synchronizer {
     // 3. bulkInsert all failed updates in one go.
     // 4. Store all remote visits for all places in one go, constructing a single sequence of visits.
     func applyIncomingToStorage(storage: SyncableHistory, records: [Record<HistoryPayload>]) -> Success {
+        var stats = SyncDownloadStats()
 
         // Skip over at most this many failing records before aborting the sync.
         let maskSomeFailures = self.mask(3)
@@ -93,7 +94,15 @@ public class HistorySynchronizer: IndependentRecordSynchronizer, Synchronizer {
             // We apply deletions immediately. Yes, this will throw away local visits
             // that haven't yet been synced. That's how Sync works, alas.
             if payload.deleted {
-                return storage.deleteByGUID(guid, deletedAt: modified).bind(maskSomeFailures)
+                stats.applied += 1
+                return storage.deleteByGUID(guid, deletedAt: modified).bind({ result in
+                    if result.isSuccess {
+                        stats.succeeded += 1
+                    } else {
+                        stats.failed += 1
+                    }
+                    return Deferred(value: result)
+                }).bind(maskSomeFailures)
             }
 
             // It's safe to apply other remote records, too -- even if we re-download, we know
@@ -110,18 +119,23 @@ public class HistorySynchronizer: IndependentRecordSynchronizer, Synchronizer {
             let placeThenVisits = storage.insertOrUpdatePlace(place, modified: modified)
                               >>> { storage.storeRemoteVisits(payload.visits, forGUID: guid) }
             return placeThenVisits.map({ result in
+                stats.applied += 1
                 if result.isFailure {
                     let reason = result.failureValue?.description ?? "unknown reason"
                     log.error("Record application failed: \(reason)")
+                    stats.failed += 1
+                } else {
+                    stats.succeeded += 1
                 }
                 return result
             }).bind(maskSomeFailures)
         }
 
         return self.applyIncomingRecords(records, apply: applyRecord)
+            >>> effect({ self.statsDelegate?.engineDidGenerateApplyStats(stats) })
     }
 
-    private func uploadModifiedPlaces(places: [(Place, [Visit])], lastTimestamp: Timestamp, fromStorage storage: SyncableHistory, withServer storageClient: Sync15CollectionClient<HistoryPayload>) -> DeferredTimestamp {
+    private func uploadModifiedPlaces(places: [(Place, [Visit])], lastTimestamp: Timestamp, fromStorage storage: SyncableHistory, withServer storageClient: Sync15CollectionClient<HistoryPayload>, inout stats: SyncUploadStats) -> DeferredTimestamp {
         log.info("Preparing upload…")
 
         // Build sequences of 1000 history items, sequence by sequence
@@ -131,7 +145,9 @@ public class HistorySynchronizer: IndependentRecordSynchronizer, Synchronizer {
         let perChunk: (ArraySlice<(Place, [Visit])>, Timestamp) -> DeferredTimestamp = { (records, timestamp) in
             let recs = records.map(makeHistoryRecord)
             log.info("Uploading \(recs.count) history items…")
+            stats.sent += recs.count
             return self.uploadRecords(recs, lastTimestamp: timestamp, storageClient: storageClient) { result, lastModified in
+                stats.sentFailed += result.failed.count
                 // We don't do anything with failed.
                 return storage.markAsSynchronized(result.success, modified: lastModified ?? timestamp)
             }
@@ -141,17 +157,19 @@ public class HistorySynchronizer: IndependentRecordSynchronizer, Synchronizer {
         return walk(toUpload, start: start, f: perChunk)
     }
 
-    private func uploadDeletedPlaces(guids: [GUID], lastTimestamp: Timestamp, fromStorage storage: SyncableHistory, withServer storageClient: Sync15CollectionClient<HistoryPayload>) -> DeferredTimestamp {
-
+    private func uploadDeletedPlaces(guids: [GUID], lastTimestamp: Timestamp, fromStorage storage: SyncableHistory, withServer storageClient: Sync15CollectionClient<HistoryPayload>, inout stats: SyncUploadStats) -> DeferredTimestamp {
         let records = guids.map(makeDeletedHistoryRecord)
-
+        stats.sent += records.count
+        
         // Deletions are smaller, so upload 100 at a time.
         return self.uploadRecords(records, lastTimestamp: lastTimestamp, storageClient: storageClient) { result, lastModified in
-            storage.markAsDeleted(result.success) >>> always(lastModified ?? lastTimestamp)
+            stats.sentFailed += result.failed.count
+            return storage.markAsDeleted(result.success) >>> always(lastModified ?? lastTimestamp)
         }
     }
 
     private func uploadOutgoingFromStorage(storage: SyncableHistory, lastTimestamp: Timestamp, withServer storageClient: Sync15CollectionClient<HistoryPayload>) -> Success {
+        var stats = SyncUploadStats()
 
         var workWasDone = false
         let uploadDeleted: Timestamp -> DeferredTimestamp = { timestamp in
@@ -161,7 +179,7 @@ public class HistorySynchronizer: IndependentRecordSynchronizer, Synchronizer {
                     workWasDone = true
                 }
                 log.info("Uploading \(guids.count) deleted places.")
-                return self.uploadDeletedPlaces(guids, lastTimestamp: timestamp, fromStorage: storage, withServer: storageClient)
+                return self.uploadDeletedPlaces(guids, lastTimestamp: timestamp, fromStorage: storage, withServer: storageClient, stats: &stats)
             }
         }
 
@@ -172,7 +190,7 @@ public class HistorySynchronizer: IndependentRecordSynchronizer, Synchronizer {
                         workWasDone = true
                     }
                     log.info("Uploading \(places.count) modified places.")
-                    return self.uploadModifiedPlaces(places, lastTimestamp: timestamp, fromStorage: storage, withServer: storageClient)
+                    return self.uploadModifiedPlaces(places, lastTimestamp: timestamp, fromStorage: storage, withServer: storageClient, stats: &stats)
             }
         }
 
@@ -187,6 +205,7 @@ public class HistorySynchronizer: IndependentRecordSynchronizer, Synchronizer {
           >>== uploadModified
            >>> effect({ log.debug("Done syncing. Work was done? \(workWasDone)") })
            >>> { workWasDone ? storage.doneUpdatingMetadataAfterUpload() : succeed() }    // A closure so we eval workWasDone after it's set!
+           >>> effect({ self.statsDelegate?.engineDidGenerateUploadStats(stats) })
            >>> effect({ log.debug("Done.") })
     }
 
