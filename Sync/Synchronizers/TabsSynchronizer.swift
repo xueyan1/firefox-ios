@@ -12,8 +12,8 @@ private let log = Logger.syncLogger
 let TabsStorageVersion = 1
 
 public class TabsSynchronizer: TimestampedSingleCollectionSynchronizer, Synchronizer {
-    public required init(scratchpad: Scratchpad, delegate: SyncDelegate, basePrefs: Prefs) {
-        super.init(scratchpad: scratchpad, delegate: delegate, basePrefs: basePrefs, collection: "tabs")
+    public required init(scratchpad: Scratchpad, delegate: SyncDelegate, statsDelegate: SyncStatsDelegate, basePrefs: Prefs) {
+        super.init(scratchpad: scratchpad, delegate: delegate, statsDelegate: statsDelegate, basePrefs: basePrefs, collection: "tabs")
     }
 
     override var storageVersion: Int {

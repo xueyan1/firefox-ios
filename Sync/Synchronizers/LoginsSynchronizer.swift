@@ -61,8 +61,8 @@ func makeLoginRecord(login: Login) -> Record<LoginPayload> {
  * works with logins, server records and collection are passwords.
  */
 public class LoginsSynchronizer: IndependentRecordSynchronizer, Synchronizer {
-    public required init(scratchpad: Scratchpad, delegate: SyncDelegate, basePrefs: Prefs) {
-        super.init(scratchpad: scratchpad, delegate: delegate, basePrefs: basePrefs, collection: "passwords")
+    public required init(scratchpad: Scratchpad, delegate: SyncDelegate, statsDelegate: SyncStatsDelegate, basePrefs: Prefs) {
+        super.init(scratchpad: scratchpad, delegate: delegate, statsDelegate: statsDelegate, basePrefs: basePrefs, collection: "passwords")
     }
 
     override var storageVersion: Int {
