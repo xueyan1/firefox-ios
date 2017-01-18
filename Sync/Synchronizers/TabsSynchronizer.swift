@@ -81,7 +81,7 @@ public class TabsSynchronizer: TimestampedSingleCollectionSynchronizer, Synchron
                     uploadStats.sentFailed += 1
                 }
                 return succeed()
-            } >>== effect({ self.statsDelegate?.engineDidGenerateUploadStats(uploadStats) })
+            } >>== effect({ self.recorder.recordUploadStats(uploadStats) })
         }
     }
 
@@ -137,7 +137,7 @@ public class TabsSynchronizer: TimestampedSingleCollectionSynchronizer, Synchron
                             self.lastFetched = responseTimestamp!
                             return succeed()
                         }
-                } >>== effect({ self.statsDelegate?.engineDidGenerateApplyStats(downloadStats) })
+                } >>== effect({ self.recorder.recordDownloadStats(downloadStats) })
             }
 
             // If this is a fresh start, do a wipe.
@@ -162,13 +162,13 @@ public class TabsSynchronizer: TimestampedSingleCollectionSynchronizer, Synchron
             if !self.remoteHasChanges(info) {
                 // upload local tabs if they've changed or we're in a fresh start.
                 uploadOurTabs(localTabs, toServer: tabsClient)
-                return deferMaybe(.Completed)
+                return deferMaybe(completedWithStats)
             }
 
             return tabsClient.getSince(self.lastFetched)
                 >>== onResponseReceived
                 >>> { self.uploadOurTabs(localTabs, toServer: tabsClient) }
-                >>> { deferMaybe(.Completed) }
+                >>> { deferMaybe(self.completedWithStats) }
         }
 
         log.error("Couldn't make tabs factory.")

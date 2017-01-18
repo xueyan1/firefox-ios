@@ -722,12 +722,36 @@ public class BrowserProfile: Profile {
                 syncDisplayState = .Good
             }
 
-            reportEndSyncingStatus(syncDisplayState, engineResults: result)
+            reportEndSyncingStatus(result)
             notifySyncing(NotificationProfileDidFinishSyncing)
             syncReducer = nil
         }
 
-        private func reportEndSyncingStatus(displayState: SyncDisplayState?, engineResults: Maybe<EngineResults>?) {
+        private func reportEndSyncingStatus(engineResults: Maybe<EngineResults>?) {
+            // We don't send this ad hoc telemetry on the release channel.
+            guard AppConstants.BuildChannel != AppBuildChannel.Release else {
+                return
+            }
+
+            guard profile.prefs.boolForKey("settings.sendUsageData") ?? true else {
+                log.debug("Profile isn't sending usage data. Not sending sync status event.")
+                return
+            }
+
+            var engineResultsDict: [String: SyncEngineStats]? = nil
+            if let results = engineResults?.successValue {
+                engineResultsDict = [:]
+                results.forEach { (engineIdentifier, syncStatus) in
+                    if case let .Completed(stats) = syncStatus {
+                        engineResultsDict![engineIdentifier] = stats
+                    }
+                }
+            }
+
+            let engineResultsFailure = engineResults?.failureValue
+        }
+
+        private func reportEndSyncingStatus_old(displayState: SyncDisplayState?, engineResults: Maybe<EngineResults>?) {
             // We don't send this ad hoc telemetry on the release channel.
             guard AppConstants.BuildChannel != AppBuildChannel.Release else {
                 return

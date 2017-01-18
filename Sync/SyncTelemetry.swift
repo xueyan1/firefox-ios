@@ -40,16 +40,15 @@ public struct SyncDownloadStats: SyncStats {
 public struct ValidationStats {}
 
 public struct SyncEngineStats {
-    public let name: String
+    public let collection: String
     public var uploadStats: SyncUploadStats?
     public var downloadStats: SyncDownloadStats?
     public var took: UInt64 = 0
-    public var status: SyncStatus = .Completed
     public var failureReason: AnyObject?
     public var validationStats: ValidationStats?
 
-    public init(name: String) {
-        self.name = name
+    public init(collection: String) {
+        self.collection = collection
     }
 }
 
@@ -79,49 +78,32 @@ public class SyncStatsReport {
     }
 }
 
-public protocol SyncStatsDelegate: class {
-    func engineWillBeginCollectingStats()
-    func engineDidGenerateUploadStats(stats: SyncUploadStats)
-    func engineDidGenerateApplyStats(stats: SyncDownloadStats)
-    func engineDidFinishCollectingStats(status: SyncStatus) -> SyncEngineStats?
-}
+public class EngineStatsRecorder {
+    public var engineStats: SyncEngineStats
 
-// Delegate object that is passed along to each synchronizer to pull out upload/downloading stats
-public class SyncEngineStatsObserver: SyncStatsDelegate {
-    let engine: String
+    private var startTime: Timestamp?
 
-    var engineStats: SyncEngineStats?
-    var startSyncTime: Timestamp?
-
-    public init(engine: String) {
-        self.engine = engine
+    public init(collection: String) {
+        self.engineStats = SyncEngineStats(collection: collection)
     }
 
-    public func engineWillBeginCollectingStats() {
-        engineStats = SyncEngineStats(name: self.engine)
-        startSyncTime = NSDate.now()
-    }
-    
-    public func engineDidGenerateUploadStats(stats: SyncUploadStats) {
-        engineStats?.uploadStats = stats.hasData() ? stats : nil
+    public func start() {
+        startTime = NSDate.now()
     }
 
-    public func engineDidGenerateApplyStats(stats: SyncDownloadStats) {
-        engineStats?.downloadStats = stats.hasData() ? stats : nil
-    }
-
-    public func engineDidFinishCollectingStats(status: SyncStatus) -> SyncEngineStats? {
-        defer { engineStats = nil }
-
-        engineStats?.status = status
-
-        guard let startTime = startSyncTime else {
-            return engineStats
+    public func end() {
+        guard let startTime = startTime else {
+            assertionFailure("EngineStatsRecorder called end without first calling start!")
+            return
         }
-        
-        let took = NSDate.now() - startTime
-        engineStats?.took = took
+        engineStats.took = NSDate.now() - startTime
+    }
 
-        return engineStats
+    public func recordUploadStats(stats: SyncUploadStats) {
+        engineStats.uploadStats = stats.hasData() ? stats : nil
+    }
+
+    public func recordDownloadStats(stats: SyncDownloadStats) {
+        engineStats.downloadStats = stats.hasData() ? stats : nil
     }
 }

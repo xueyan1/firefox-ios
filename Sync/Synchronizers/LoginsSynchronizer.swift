@@ -113,7 +113,7 @@ public class LoginsSynchronizer: IndependentRecordSynchronizer, Synchronizer {
 
             stats.applied += 1
             return storage.applyChangedLogin(self.getLogin(rec)).bind(recordApplyResult)
-                >>> effect({ self.statsDelegate?.engineDidGenerateApplyStats(stats) })
+                >>> effect({ self.recorder.recordDownloadStats(stats) })
         }
     }
 
@@ -131,7 +131,7 @@ public class LoginsSynchronizer: IndependentRecordSynchronizer, Synchronizer {
                              lastTimestamp: lastTimestamp,
                              storageClient: storageClient,
                              onUpload: onUpload)
-            >>> effect({ self.statsDelegate?.engineDidGenerateUploadStats(stats) })
+            >>> effect({ self.recorder.recordUploadStats(stats) })
     }
 
     // Find any records for which a local overlay exists. If we want to be really precise,
@@ -195,6 +195,6 @@ public class LoginsSynchronizer: IndependentRecordSynchronizer, Synchronizer {
             // to the last successfully applied record timestamp, no matter where we fail.
             // There's no need to do the upload before bumping -- the storage of local changes is stable.
             >>> { self.uploadOutgoingFromStorage(logins, lastTimestamp: 0, withServer: passwordsClient) }
-            >>> { return deferMaybe(.Completed) }
+            >>> { return deferMaybe(self.completedWithStats) }
     }
 }

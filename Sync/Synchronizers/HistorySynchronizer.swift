@@ -132,7 +132,7 @@ public class HistorySynchronizer: IndependentRecordSynchronizer, Synchronizer {
         }
 
         return self.applyIncomingRecords(records, apply: applyRecord)
-            >>> effect({ self.statsDelegate?.engineDidGenerateApplyStats(stats) })
+            >>> effect({ self.recorder.recordDownloadStats(stats) })
     }
 
     private func uploadModifiedPlaces(places: [(Place, [Visit])], lastTimestamp: Timestamp, fromStorage storage: SyncableHistory, withServer storageClient: Sync15CollectionClient<HistoryPayload>, inout stats: SyncUploadStats) -> DeferredTimestamp {
@@ -205,7 +205,7 @@ public class HistorySynchronizer: IndependentRecordSynchronizer, Synchronizer {
           >>== uploadModified
            >>> effect({ log.debug("Done syncing. Work was done? \(workWasDone)") })
            >>> { workWasDone ? storage.doneUpdatingMetadataAfterUpload() : succeed() }    // A closure so we eval workWasDone after it's set!
-           >>> effect({ self.statsDelegate?.engineDidGenerateUploadStats(stats) })
+           >>> effect({ self.recorder.recordUploadStats(stats) })
            >>> effect({ log.debug("Done.") })
     }
 
@@ -229,7 +229,7 @@ public class HistorySynchronizer: IndependentRecordSynchronizer, Synchronizer {
         func onBatchResult(result: Maybe<DownloadEndState>) -> SyncResult {
             guard let end = result.successValue else {
                 log.warning("Got failure: \(result.failureValue!)")
-                return deferMaybe(.Completed)
+                return deferMaybe(completedWithStats)
             }
 
             switch end {
@@ -237,7 +237,7 @@ public class HistorySynchronizer: IndependentRecordSynchronizer, Synchronizer {
                 log.info("Done with batched mirroring.")
                 return applyBatched()
                    >>> history.doneApplyingRecordsAfterDownload
-                   >>> { deferMaybe(.Completed) }
+                   >>> { deferMaybe(self.completedWithStats) }
             case .Incomplete:
                 log.debug("Running another batch.")
                 // This recursion is fine because Deferred always pushes callbacks onto a queue.
@@ -249,7 +249,7 @@ public class HistorySynchronizer: IndependentRecordSynchronizer, Synchronizer {
             case .NoNewData:
                 log.info("No new data. No need to continue batching.")
                 downloader.advance()
-                return deferMaybe(.Completed)
+                return deferMaybe(completedWithStats)
             }
         }
 
@@ -289,7 +289,7 @@ public class HistorySynchronizer: IndependentRecordSynchronizer, Synchronizer {
                     return self.uploadOutgoingFromStorage(history,
                                                           lastTimestamp: 0,
                                                           withServer: historyClient)
-                       >>> { deferMaybe(.Completed) }
+                       >>> { deferMaybe(self.completedWithStats) }
 
                 // If we didn't finish downloading, do nothing further -- just pass
                 // through the download result.
