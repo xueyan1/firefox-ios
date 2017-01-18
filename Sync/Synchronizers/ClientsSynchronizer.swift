@@ -92,8 +92,8 @@ let Commands: [String: (String, [JSON]) -> Command?] = [
 ]
 
 public class ClientsSynchronizer: TimestampedSingleCollectionSynchronizer, Synchronizer {
-    public required init(scratchpad: Scratchpad, delegate: SyncDelegate, statsDelegate: SyncStatsDelegate, basePrefs: Prefs) {
-        super.init(scratchpad: scratchpad, delegate: delegate, statsDelegate: statsDelegate, basePrefs: basePrefs, collection: "clients")
+    public required init(scratchpad: Scratchpad, delegate: SyncDelegate, basePrefs: Prefs) {
+        super.init(scratchpad: scratchpad, delegate: delegate, basePrefs: basePrefs, collection: "clients")
     }
 
     override var storageVersion: Int {

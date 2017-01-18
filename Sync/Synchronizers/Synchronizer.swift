@@ -57,7 +57,7 @@ public protocol ResettableSynchronizer {
  * pickle instructions for eventual delivery next time one is made and synchronized…
  */
 public protocol Synchronizer {
-    init(scratchpad: Scratchpad, delegate: SyncDelegate, statsDelegate: SyncStatsDelegate, basePrefs: Prefs)
+    init(scratchpad: Scratchpad, delegate: SyncDelegate, basePrefs: Prefs)
 
     /**
      * Return a reason if the current state of this synchronizer -- particularly prefs and scratchpad --
@@ -150,10 +150,9 @@ public class BaseCollectionSynchronizer {
         return basePrefs.branch(branchName)
     }
 
-    init(scratchpad: Scratchpad, delegate: SyncDelegate, statsDelegate: SyncStatsDelegate?, basePrefs: Prefs, collection: String) {
+    init(scratchpad: Scratchpad, delegate: SyncDelegate, basePrefs: Prefs, collection: String) {
         self.scratchpad = scratchpad
         self.delegate = delegate
-        self.statsDelegate = statsDelegate
         self.collection = collection
         self.prefs = BaseCollectionSynchronizer.prefsForCollection(collection, withBasePrefs: basePrefs)
 

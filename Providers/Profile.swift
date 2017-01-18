@@ -703,20 +703,15 @@ public class BrowserProfile: Profile {
 
         // Used as a task queue for syncing.
         private var syncReducer: AsyncReducer<EngineResults, EngineTasks>?
-        private var syncStatsReport: SyncStatsReport?
 
         private func beginSyncing() {
             notifySyncing(NotificationProfileDidStartSyncing)
-            if let account = profile.account {
-                syncStatsReport = SyncStatsReport(when: NSDate.now(), account: account, didLogin: false, why: "")
-            }
         }
 
         private func endSyncing(result: Maybe<EngineResults>?) {
             // loop through status's and fill sync state
             syncLock.lock()
             defer {
-                syncStatsReport = nil
                 syncLock.unlock()
             }
             log.info("Ending all queued syncs.")
@@ -729,11 +724,6 @@ public class BrowserProfile: Profile {
 
             reportEndSyncingStatus(syncDisplayState, engineResults: result)
             notifySyncing(NotificationProfileDidFinishSyncing)
-
-            if let report = self.syncStatsReport {
-                notifySyncStatsReport(report)
-            }
-            
             syncReducer = nil
         }
 
@@ -804,11 +794,6 @@ public class BrowserProfile: Profile {
 
         private func notifySyncing(notification: String) {
             NSNotificationCenter.defaultCenter().postNotification(NSNotification(name: notification, object: syncDisplayState?.asObject()))
-        }
-
-        private func notifySyncStatsReport(report: SyncStatsReport) {
-            report.finishReport()
-            NSNotificationCenter.defaultCenter().postNotification(NSNotification(name: NotificationSyncReportFinished, object: report))
         }
 
         init(profile: BrowserProfile) {
@@ -1099,54 +1084,33 @@ public class BrowserProfile: Profile {
         }
 
         private func syncClientsWithDelegate(delegate: SyncDelegate, prefs: Prefs, ready: Ready) -> SyncResult {
-            return statsWrapEngineSync("clients") { statsDelegate in
-                log.debug("Syncing clients to storage.")
-                let clientSynchronizer = ready.synchronizer(ClientsSynchronizer.self, delegate: delegate, statsDelegate: statsDelegate, prefs: prefs)
-                return clientSynchronizer.synchronizeLocalClients(self.profile.remoteClientsAndTabs, withServer: ready.client, info: ready.info)
-            }
+            log.debug("Syncing clients to storage.")
+            let clientSynchronizer = ready.synchronizer(ClientsSynchronizer.self, delegate: delegate, prefs: prefs)
+            return clientSynchronizer.synchronizeLocalClients(self.profile.remoteClientsAndTabs, withServer: ready.client, info: ready.info)
         }
 
         private func syncTabsWithDelegate(delegate: SyncDelegate, prefs: Prefs, ready: Ready) -> SyncResult {
-            return statsWrapEngineSync("tabs") { statsDelegate in
-                let storage = self.profile.remoteClientsAndTabs
-                let tabSynchronizer = ready.synchronizer(TabsSynchronizer.self, delegate: delegate, statsDelegate: statsDelegate, prefs: prefs)
-                return tabSynchronizer.synchronizeLocalTabs(storage, withServer: ready.client, info: ready.info)
-            }
+            let storage = self.profile.remoteClientsAndTabs
+            let tabSynchronizer = ready.synchronizer(TabsSynchronizer.self, delegate: delegate, prefs: prefs)
+            return tabSynchronizer.synchronizeLocalTabs(storage, withServer: ready.client, info: ready.info)
         }
 
         private func syncHistoryWithDelegate(delegate: SyncDelegate, prefs: Prefs, ready: Ready) -> SyncResult {
-            return statsWrapEngineSync("history") { statsDelegate in
-                log.debug("Syncing history to storage.")
-                let historySynchronizer = ready.synchronizer(HistorySynchronizer.self, delegate: delegate, statsDelegate: statsDelegate, prefs: prefs)
-                return historySynchronizer.synchronizeLocalHistory(self.profile.history, withServer: ready.client, info: ready.info, greenLight: self.greenLight())
-            }
+            log.debug("Syncing history to storage.")
+            let historySynchronizer = ready.synchronizer(HistorySynchronizer.self, delegate: delegate, prefs: prefs)
+            return historySynchronizer.synchronizeLocalHistory(self.profile.history, withServer: ready.client, info: ready.info, greenLight: self.greenLight())
         }
 
         private func syncLoginsWithDelegate(delegate: SyncDelegate, prefs: Prefs, ready: Ready) -> SyncResult {
-            return statsWrapEngineSync("logins") { statsDelegate in
-                log.debug("Syncing logins to storage.")
-                let loginsSynchronizer = ready.synchronizer(LoginsSynchronizer.self, delegate: delegate, statsDelegate: statsDelegate, prefs: prefs)
-                return loginsSynchronizer.synchronizeLocalLogins(self.profile.logins, withServer: ready.client, info: ready.info)
-            }
+            log.debug("Syncing logins to storage.")
+            let loginsSynchronizer = ready.synchronizer(LoginsSynchronizer.self, delegate: delegate, prefs: prefs)
+            return loginsSynchronizer.synchronizeLocalLogins(self.profile.logins, withServer: ready.client, info: ready.info)
         }
 
         private func mirrorBookmarksWithDelegate(delegate: SyncDelegate, prefs: Prefs, ready: Ready) -> SyncResult {
-            return statsWrapEngineSync("bookmarks") { statsDelegate in
-                log.debug("Synchronizing server bookmarks to storage.")
-                let bookmarksMirrorer = ready.synchronizer(BufferingBookmarksSynchronizer.self, delegate: delegate, statsDelegate: statsDelegate, prefs: prefs)
-                return bookmarksMirrorer.synchronizeBookmarksToStorage(self.profile.bookmarks, usingBuffer: self.profile.mirrorBookmarks, withServer: ready.client, info: ready.info, greenLight: self.greenLight())
-            }
-        }
-
-        private func statsWrapEngineSync(engine: String, syncThunk: (SyncStatsDelegate) -> SyncResult) -> SyncResult {
-            let statsDelegate = SyncEngineStatsObserver(engine: engine)
-            statsDelegate.engineWillBeginCollectingStats()
-            return syncThunk(statsDelegate) >>== effect({ status in
-                guard let stats = statsDelegate.engineDidFinishCollectingStats(status) else {
-                    return
-                }
-                self.syncStatsReport?.addStats(stats, forEngine: engine)
-            })
+            log.debug("Synchronizing server bookmarks to storage.")
+            let bookmarksMirrorer = ready.synchronizer(BufferingBookmarksSynchronizer.self, delegate: delegate, prefs: prefs)
+            return bookmarksMirrorer.synchronizeBookmarksToStorage(self.profile.bookmarks, usingBuffer: self.profile.mirrorBookmarks, withServer: ready.client, info: ready.info, greenLight: self.greenLight())
         }
 
         func takeActionsOnEngineStateChanges<T: EngineStateChanges>(changes: T) -> Deferred<Maybe<T>> {

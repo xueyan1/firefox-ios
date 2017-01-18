@@ -81,8 +81,8 @@ class TrivialBookmarkStorer: BookmarkStorer {
 // MARK: - External synchronizer interface.
 
 public class BufferingBookmarksSynchronizer: TimestampedSingleCollectionSynchronizer, Synchronizer {
-    public required init(scratchpad: Scratchpad, delegate: SyncDelegate, statsDelegate: SyncStatsDelegate, basePrefs: Prefs) {
-        super.init(scratchpad: scratchpad, delegate: delegate, statsDelegate: statsDelegate, basePrefs: basePrefs, collection: "bookmarks")
+    public required init(scratchpad: Scratchpad, delegate: SyncDelegate, basePrefs: Prefs) {
+        super.init(scratchpad: scratchpad, delegate: delegate, basePrefs: basePrefs, collection: "bookmarks")
     }
 
     override var storageVersion: Int {
