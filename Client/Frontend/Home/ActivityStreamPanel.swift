@@ -404,16 +404,7 @@ extension ActivityStreamPanel {
 
         let site = self.topSitesManager.content[indexPath.item]
         let eventSource = ASInfo(actionPosition: indexPath.item, source: .topSites)
-
-        profile.bookmarks.modelFactory >>== {
-            $0.isBookmarked(site.url).uponQueue(dispatch_get_main_queue()) { result in
-                guard let bookmarked = result.successValue else {
-                    log.error("Error getting bookmark status: \(result.failureValue).")
-                    return
-                }
-                self.presentContextMenu(site, eventInfo: eventSource, siteImage: siteImage, siteBGColor: siteBGColor, isBookmarked: bookmarked)
-            }
-        }
+        presentContextMenu(site, eventInfo: eventSource, siteImage: siteImage, siteBGColor: siteBGColor)
     }
 
     private func contextMenuForHighlightCellWithIndexPath(indexPath: NSIndexPath) {
@@ -423,19 +414,11 @@ extension ActivityStreamPanel {
 
         let site = highlights[indexPath.row]
         let event = ASInfo(actionPosition: indexPath.row, source: .highlights)
-        profile.bookmarks.modelFactory >>== {
-            $0.isBookmarked(site.url).uponQueue(dispatch_get_main_queue()) { result in
-                guard let bookmarked = result.successValue else {
-                    log.error("Error getting bookmark status: \(result.failureValue).")
-                    return
-                }
-                self.presentContextMenu(site, eventInfo: event, siteImage: siteImage, siteBGColor: siteBGColor, isBookmarked: bookmarked)
-            }
-        }
+        presentContextMenu(site, eventInfo: event, siteImage: siteImage, siteBGColor: siteBGColor)
     }
 
 
-    private func presentContextMenu(site: Site, eventInfo: ASInfo, siteImage: UIImage?, siteBGColor: UIColor?, isBookmarked: Bool = false) {
+    private func presentContextMenu(site: Site, eventInfo: ASInfo, siteImage: UIImage?, siteBGColor: UIColor?) {
         guard let siteURL = NSURL(string: site.url) else {
             return
         }
@@ -449,11 +432,12 @@ extension ActivityStreamPanel {
         }
 
         let bookmarkAction: ActionOverlayTableViewAction
-        if isBookmarked {
+        if site.bookmarked ?? false {
             bookmarkAction = ActionOverlayTableViewAction(title: Strings.RemoveBookmarkContextMenuTitle, iconString: "action_bookmark_remove", handler: { action in
                 guard let absoluteString = siteURL.absoluteString else { return }
                 self.profile.bookmarks.modelFactory >>== {
                     $0.removeByURL(absoluteString)
+                    site.setBookmarked(false)
                 }
             })
         } else {
@@ -467,6 +451,7 @@ extension ActivityStreamPanel {
                 QuickActions.sharedInstance.addDynamicApplicationShortcutItemOfType(.OpenLastBookmark,
                     withUserData: userData,
                     toApplication: UIApplication.sharedApplication())
+                site.setBookmarked(true)
             })
         }
 
