@@ -404,7 +404,16 @@ extension ActivityStreamPanel {
 
         let site = self.topSitesManager.content[indexPath.item]
         let eventSource = ASInfo(actionPosition: indexPath.item, source: .topSites)
-        presentContextMenu(site, eventInfo: eventSource, siteImage: siteImage, siteBGColor: siteBGColor)
+
+        profile.bookmarks.modelFactory >>== {
+            $0.isBookmarked(site.url).uponQueue(dispatch_get_main_queue()) { result in
+                guard let bookmarked = result.successValue else {
+                    log.error("Error getting bookmark status: \(result.failureValue).")
+                    return
+                }
+                self.presentContextMenu(site, eventInfo: eventSource, siteImage: siteImage, siteBGColor: siteBGColor, isBookmarked: bookmarked)
+            }
+        }
     }
 
     private func contextMenuForHighlightCellWithIndexPath(indexPath: NSIndexPath) {
@@ -414,11 +423,19 @@ extension ActivityStreamPanel {
 
         let site = highlights[indexPath.row]
         let event = ASInfo(actionPosition: indexPath.row, source: .highlights)
-        presentContextMenu(site, eventInfo: event, siteImage: siteImage, siteBGColor: siteBGColor)
+        profile.bookmarks.modelFactory >>== {
+            $0.isBookmarked(site.url).uponQueue(dispatch_get_main_queue()) { result in
+                guard let bookmarked = result.successValue else {
+                    log.error("Error getting bookmark status: \(result.failureValue).")
+                    return
+                }
+                self.presentContextMenu(site, eventInfo: event, siteImage: siteImage, siteBGColor: siteBGColor, isBookmarked: bookmarked)
+            }
+        }
     }
 
 
-    private func presentContextMenu(site: Site, eventInfo: ASInfo, siteImage: UIImage?, siteBGColor: UIColor?) {
+    private func presentContextMenu(site: Site, eventInfo: ASInfo, siteImage: UIImage?, siteBGColor: UIColor?, isBookmarked: Bool = false) {
         guard let siteURL = NSURL(string: site.url) else {
             return
         }
@@ -431,17 +448,27 @@ extension ActivityStreamPanel {
             self.homePanelDelegate?.homePanelDidRequestToOpenInNewTab(siteURL, isPrivate: true)
         }
 
-        let bookmarkAction = ActionOverlayTableViewAction(title: Strings.BookmarkContextMenuTitle, iconString: "action_bookmark", handler: { action in
-            let shareItem = ShareItem(url: site.url, title: site.title, favicon: site.icon)
-            self.profile.bookmarks.shareItem(shareItem)
-            var userData = [QuickActions.TabURLKey: shareItem.url]
-            if let title = shareItem.title {
-                userData[QuickActions.TabTitleKey] = title
-            }
-            QuickActions.sharedInstance.addDynamicApplicationShortcutItemOfType(.OpenLastBookmark,
-                withUserData: userData,
-                toApplication: UIApplication.sharedApplication())
-        })
+        let bookmarkAction: ActionOverlayTableViewAction
+        if isBookmarked {
+            bookmarkAction = ActionOverlayTableViewAction(title: Strings.RemoveBookmarkContextMenuTitle, iconString: "action_bookmark_remove", handler: { action in
+                guard let absoluteString = siteURL.absoluteString else { return }
+                self.profile.bookmarks.modelFactory >>== {
+                    $0.removeByURL(absoluteString)
+                }
+            })
+        } else {
+            bookmarkAction = ActionOverlayTableViewAction(title: Strings.BookmarkContextMenuTitle, iconString: "action_bookmark", handler: { action in
+                let shareItem = ShareItem(url: site.url, title: site.title, favicon: site.icon)
+                self.profile.bookmarks.shareItem(shareItem)
+                var userData = [QuickActions.TabURLKey: shareItem.url]
+                if let title = shareItem.title {
+                    userData[QuickActions.TabTitleKey] = title
+                }
+                QuickActions.sharedInstance.addDynamicApplicationShortcutItemOfType(.OpenLastBookmark,
+                    withUserData: userData,
+                    toApplication: UIApplication.sharedApplication())
+            })
+        }
 
         let deleteFromHistoryAction = ActionOverlayTableViewAction(title: Strings.DeleteFromHistoryContextMenuTitle, iconString: "action_delete", handler: { action in
             ASOnyxPing.reportDeleteItemEvent(eventInfo)
