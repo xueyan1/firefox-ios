@@ -405,19 +405,7 @@ extension ActivityStreamPanel {
         let site = self.topSitesManager.content[indexPath.item]
         let eventSource = ASInfo(actionPosition: indexPath.item, source: .topSites)
         if site.bookmarked == nil {
-            profile.bookmarks.modelFactory >>== {
-                $0.isBookmarked(site.url)
-                    .uponQueue(dispatch_get_main_queue()) {
-                        guard let isBookmarked = $0.successValue else {
-                            log.error("Error getting bookmark status: \($0.failureValue).")
-                            return
-                        }
-
-                        site.setBookmarked(isBookmarked)
-                        self.presentContextMenu(site, eventInfo: eventSource, siteImage: siteImage, siteBGColor: siteBGColor)
-                }
-            }
-            return
+            return fetchBookmarkStatusThenPresentContextMenu(site, eventInfo: eventSource, siteImage: siteImage, siteBGColor: siteBGColor)
         }
         presentContextMenu(site, eventInfo: eventSource, siteImage: siteImage, siteBGColor: siteBGColor)
     }
@@ -430,21 +418,25 @@ extension ActivityStreamPanel {
         let site = highlights[indexPath.row]
         let event = ASInfo(actionPosition: indexPath.row, source: .highlights)
         if site.bookmarked == nil {
-            profile.bookmarks.modelFactory >>== {
-                $0.isBookmarked(site.url)
-                    .uponQueue(dispatch_get_main_queue()) {
-                        guard let isBookmarked = $0.successValue else {
-                            log.error("Error getting bookmark status: \($0.failureValue).")
-                            return
-                        }
-
-                        site.setBookmarked(isBookmarked)
-                        self.presentContextMenu(site, eventInfo: event, siteImage: siteImage, siteBGColor: siteBGColor)
-                }
-            }
-            return
+            return fetchBookmarkStatusThenPresentContextMenu(site, eventInfo: event, siteImage: siteImage, siteBGColor: siteBGColor)
         }
         presentContextMenu(site, eventInfo: event, siteImage: siteImage, siteBGColor: siteBGColor)
+    }
+
+    private func fetchBookmarkStatusThenPresentContextMenu(site: Site, eventInfo: ASInfo, siteImage: UIImage?, siteBGColor: UIColor?) {
+        profile.bookmarks.modelFactory >>== {
+            $0.isBookmarked(site.url)
+                .uponQueue(dispatch_get_main_queue()) {
+                    defer {
+                        self.presentContextMenu(site, eventInfo: eventInfo, siteImage: siteImage, siteBGColor: siteBGColor)
+                    }
+                    guard let isBookmarked = $0.successValue else {
+                        log.error("Error getting bookmark status: \($0.failureValue).")
+                        return
+                    }
+                    site.setBookmarked(isBookmarked)
+            }
+        }
     }
 
 
