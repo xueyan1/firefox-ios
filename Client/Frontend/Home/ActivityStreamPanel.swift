@@ -405,7 +405,7 @@ extension ActivityStreamPanel {
         let site = self.topSitesManager.content[indexPath.item]
         let eventSource = ASInfo(actionPosition: indexPath.item, source: .topSites)
         if site.bookmarked == nil {
-            return profile.bookmarks.modelFactory >>== {
+            profile.bookmarks.modelFactory >>== {
                 $0.isBookmarked(site.url)
                     .uponQueue(dispatch_get_main_queue()) {
                         guard let isBookmarked = $0.successValue else {
@@ -414,11 +414,10 @@ extension ActivityStreamPanel {
                         }
 
                         site.setBookmarked(isBookmarked)
-                        dispatch_async(dispatch_get_main_queue()) {
-                            self.presentContextMenu(site, eventInfo: eventSource, siteImage: siteImage, siteBGColor: siteBGColor)
-                        }
+                        self.presentContextMenu(site, eventInfo: eventSource, siteImage: siteImage, siteBGColor: siteBGColor)
                 }
             }
+            return
         }
         presentContextMenu(site, eventInfo: eventSource, siteImage: siteImage, siteBGColor: siteBGColor)
     }
@@ -431,7 +430,7 @@ extension ActivityStreamPanel {
         let site = highlights[indexPath.row]
         let event = ASInfo(actionPosition: indexPath.row, source: .highlights)
         if site.bookmarked == nil {
-            return profile.bookmarks.modelFactory >>== {
+            profile.bookmarks.modelFactory >>== {
                 $0.isBookmarked(site.url)
                     .uponQueue(dispatch_get_main_queue()) {
                         guard let isBookmarked = $0.successValue else {
@@ -440,11 +439,10 @@ extension ActivityStreamPanel {
                         }
 
                         site.setBookmarked(isBookmarked)
-                        dispatch_async(dispatch_get_main_queue()) {
-                            self.presentContextMenu(site, eventInfo: event, siteImage: siteImage, siteBGColor: siteBGColor)
-                        }
+                        self.presentContextMenu(site, eventInfo: event, siteImage: siteImage, siteBGColor: siteBGColor)
                 }
             }
+            return
         }
         presentContextMenu(site, eventInfo: event, siteImage: siteImage, siteBGColor: siteBGColor)
     }
