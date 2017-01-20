@@ -81,7 +81,7 @@ public class TabsSynchronizer: TimestampedSingleCollectionSynchronizer, Synchron
                     uploadStats.sentFailed += 1
                 }
                 return succeed()
-            } >>== effect({ self.recorder.recordUploadStats(uploadStats) })
+            } >>== effect({ self.statsSession.uploadStats = uploadStats })
         }
     }
 
@@ -137,7 +137,7 @@ public class TabsSynchronizer: TimestampedSingleCollectionSynchronizer, Synchron
                             self.lastFetched = responseTimestamp!
                             return succeed()
                         }
-                } >>== effect({ self.recorder.recordDownloadStats(downloadStats) })
+                } >>== effect({ self.statsSession.downloadStats })
             }
 
             // If this is a fresh start, do a wipe.
@@ -158,6 +158,8 @@ public class TabsSynchronizer: TimestampedSingleCollectionSynchronizer, Synchron
         let encoder = RecordEncoder<TabsPayload>(decode: { TabsPayload($0) }, encode: { $0 })
         if let encrypter = keys?.encrypter(self.collection, encoder: encoder) {
             let tabsClient = storageClient.clientForCollection(self.collection, encrypter: encrypter)
+
+            statsSession.start()
 
             if !self.remoteHasChanges(info) {
                 // upload local tabs if they've changed or we're in a fresh start.

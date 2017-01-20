@@ -277,7 +277,7 @@ public class ClientsSynchronizer: TimestampedSingleCollectionSynchronizer, Synch
                 } else {
                     uploadStats.sentFailed += 1
                 }
-                self.recorder.recordUploadStats(uploadStats)
+                self.statsSession.uploadStats = uploadStats
                 return succeed()
         }
     }
@@ -323,7 +323,7 @@ public class ClientsSynchronizer: TimestampedSingleCollectionSynchronizer, Synch
             >>== { succeeded in
                 downloadStats.succeeded += succeeded
                 downloadStats.failed += (toInsert.count - succeeded)
-                self.recorder.recordDownloadStats(downloadStats)
+                self.statsSession.downloadStats = downloadStats
                 return succeed()
             }
             >>== { self.processCommandsFromRecord(ours, withServer: storageClient) }
@@ -366,6 +366,7 @@ public class ClientsSynchronizer: TimestampedSingleCollectionSynchronizer, Synch
 
         if !self.remoteHasChanges(info) {
             log.debug("No remote changes for clients. (Last fetched \(self.lastFetched).)")
+            statsSession.start()
             return self.maybeUploadOurRecord(false, ifUnmodifiedSince: nil, toServer: clientsClient)
                 >>> { self.uploadClientCommands(toLocalClients: localClients, withServer: clientsClient) }
                 >>> { deferMaybe(self.completedWithStats) }
@@ -374,6 +375,7 @@ public class ClientsSynchronizer: TimestampedSingleCollectionSynchronizer, Synch
         // TODO: some of the commands we process might involve wiping collections or the
         // entire profile. We should model this as an explicit status, and return it here
         // instead of .Completed.
+        statsSession.start()
         return clientsClient.getSince(self.lastFetched)
             >>== { response in
                 return self.wipeIfNecessary(localClients)

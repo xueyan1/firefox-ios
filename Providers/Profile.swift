@@ -48,6 +48,7 @@ typealias EngineIdentifier = String
 typealias SyncFunction = (SyncDelegate, Prefs, Ready) -> SyncResult
 typealias EngineStatus = (EngineIdentifier, SyncStatus)
 typealias EngineResults = [EngineStatus]
+typealias SyncOperationResult = (engineResults: Maybe<EngineResults>, stats: SyncOperationStatsSession)
 
 class ProfileFileAccessor: FileAccessor {
     convenience init(profile: Profile) {
@@ -708,7 +709,7 @@ public class BrowserProfile: Profile {
             notifySyncing(NotificationProfileDidStartSyncing)
         }
 
-        private func endSyncing(result: Maybe<EngineResults>?) {
+        private func endSyncing(result: SyncOperationResult) {
             // loop through status's and fill sync state
             syncLock.lock()
             defer {
@@ -716,42 +717,37 @@ public class BrowserProfile: Profile {
             }
             log.info("Ending all queued syncs.")
 
-            if let syncResult = result {
-                syncDisplayState = SyncStatusResolver(engineResults: syncResult).resolveResults()
-            } else {
-                syncDisplayState = .Good
-            }
+//            syncDisplayState = SyncStatusResolver(engineResults: result.results).resolveResults()
 
-            reportEndSyncingStatus(result)
+            // TODO(sleroux): Send sync ping instead
+            print(result.stats)
+
+//            reportEndSyncingStatus(syncDisplayState, engineResults: result.results)
+
+            reportSyncPingForResult(result)
             notifySyncing(NotificationProfileDidFinishSyncing)
             syncReducer = nil
         }
 
-        private func reportEndSyncingStatus(engineResults: Maybe<EngineResults>?) {
-            // We don't send this ad hoc telemetry on the release channel.
-            guard AppConstants.BuildChannel != AppBuildChannel.Release else {
-                return
-            }
-
+        private func reportSyncPingForResult(opResult: SyncOperationResult) {
             guard profile.prefs.boolForKey("settings.sendUsageData") ?? true else {
                 log.debug("Profile isn't sending usage data. Not sending sync status event.")
                 return
             }
 
-            var engineResultsDict: [String: SyncEngineStats]? = nil
-            if let results = engineResults?.successValue {
-                engineResultsDict = [:]
-                results.forEach { (engineIdentifier, syncStatus) in
-                    if case let .Completed(stats) = syncStatus {
-                        engineResultsDict![engineIdentifier] = stats
+            if let engineResults = opResult.engineResults.successValue {
+                engineResults.forEach { collection, status in
+                    switch status {
+                    case .Completed(let stats):
+                        print("collection: \(collection), stats: \(stats)")
+                    default:
+                        break
                     }
                 }
             }
-
-            let engineResultsFailure = engineResults?.failureValue
         }
 
-        private func reportEndSyncingStatus_old(displayState: SyncDisplayState?, engineResults: Maybe<EngineResults>?) {
+        private func reportEndSyncingStatus(displayState: SyncDisplayState?, engineResults: Maybe<EngineResults>?) {
             // We don't send this ad hoc telemetry on the release channel.
             guard AppConstants.BuildChannel != AppBuildChannel.Release else {
                 return
@@ -1189,6 +1185,10 @@ public class BrowserProfile: Profile {
 
             if (!isSyncing) {
                 // A sync isn't already going on, so start another one.
+
+                // TODO(sleroux): Use proper info and server timestamp for when
+                let statsSession = SyncOperationStatsSession(uid: "", deviceID: "", when: NSDate.now(), why: "because")
+
                 let reducer = AsyncReducer<EngineResults, EngineTasks>(initialValue: [], queue: syncQueue) { (statuses, synchronizers)  in
                     let done = Set(statuses.map { $0.0 })
                     let remaining = synchronizers.filter { !done.contains($0.0) }
@@ -1200,11 +1200,14 @@ public class BrowserProfile: Profile {
                     return self.syncWith(remaining) >>== { deferMaybe(statuses + $0) }
                 }
 
-                reducer.terminal.upon(self.endSyncing)
+                reducer.terminal.upon { results in
+                    self.endSyncing(SyncOperationResult(engineResults: results, stats: statsSession.end()))
+                }
 
                 // The actual work of synchronizing doesn't start until we append
                 // the synchronizers to the reducer below.
                 self.syncReducer = reducer
+                statsSession.start()
                 self.beginSyncing()
             }
 

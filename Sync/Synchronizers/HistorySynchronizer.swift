@@ -132,7 +132,9 @@ public class HistorySynchronizer: IndependentRecordSynchronizer, Synchronizer {
         }
 
         return self.applyIncomingRecords(records, apply: applyRecord)
-            >>> effect({ self.recorder.recordDownloadStats(stats) })
+            >>> effect({
+                self.statsSession.downloadStats += stats
+            })
     }
 
     private func uploadModifiedPlaces(places: [(Place, [Visit])], lastTimestamp: Timestamp, fromStorage storage: SyncableHistory, withServer storageClient: Sync15CollectionClient<HistoryPayload>, inout stats: SyncUploadStats) -> DeferredTimestamp {
@@ -205,7 +207,7 @@ public class HistorySynchronizer: IndependentRecordSynchronizer, Synchronizer {
           >>== uploadModified
            >>> effect({ log.debug("Done syncing. Work was done? \(workWasDone)") })
            >>> { workWasDone ? storage.doneUpdatingMetadataAfterUpload() : succeed() }    // A closure so we eval workWasDone after it's set!
-           >>> effect({ self.recorder.recordUploadStats(stats) })
+           >>> effect({ self.statsSession.uploadStats += stats })
            >>> effect({ log.debug("Done.") })
     }
 
@@ -261,7 +263,7 @@ public class HistorySynchronizer: IndependentRecordSynchronizer, Synchronizer {
         if let reason = self.reasonToNotSync(storageClient) {
             return deferMaybe(.NotStarted(reason))
         }
-
+        
         let encoder = RecordEncoder<HistoryPayload>(decode: { HistoryPayload($0) }, encode: { $0 })
 
         guard let historyClient = self.collectionClient(encoder, storageClient: storageClient) else {
@@ -281,6 +283,7 @@ public class HistorySynchronizer: IndependentRecordSynchronizer, Synchronizer {
             self.lastFetched = 0
         }
 
+        statsSession.start()
         return self.go(info, greenLight: greenLight, downloader: downloader, history: history)
             >>== { syncResult in
                 switch syncResult {

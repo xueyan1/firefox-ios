@@ -6,12 +6,11 @@ import Foundation
 import Shared
 import Account
 
-// MARK: Stats/Telemetry structures
-public protocol SyncStats {
+public protocol Stats {
     func hasData() -> Bool
 }
 
-public struct SyncUploadStats: SyncStats {
+public struct SyncUploadStats: Stats {
     var sent: Int = 0
     var sentFailed: Int = 0
 
@@ -20,7 +19,7 @@ public struct SyncUploadStats: SyncStats {
     }
 }
 
-public struct SyncDownloadStats: SyncStats {
+public struct SyncDownloadStats: Stats {
     var applied: Int = 0
     var succeeded: Int = 0
     var failed: Int = 0
@@ -36,74 +35,72 @@ public struct SyncDownloadStats: SyncStats {
     }
 }
 
-// TODO: Implement various bookmark validation issues we can run into
-public struct ValidationStats {}
+public func +=(statsA: SyncDownloadStats, statsB: SyncDownloadStats) -> SyncDownloadStats {
+    return SyncDownloadStats(applied: statsA.applied + statsB.applied,
+                             succeeded: statsA.succeeded + statsB.succeeded,
+                             failed: statsA.failed + statsB.failed,
+                             newFailed: statsA.newFailed + statsB.newFailed,
+                             reconciled: statsA.reconciled + statsB.reconciled)
+}
 
-public struct SyncEngineStats {
-    public let collection: String
-    public var uploadStats: SyncUploadStats?
-    public var downloadStats: SyncDownloadStats?
-    public var took: UInt64 = 0
-    public var failureReason: AnyObject?
-    public var validationStats: ValidationStats?
+public func +=(statsA: SyncUploadStats, statsB: SyncUploadStats) -> SyncUploadStats {
+    return SyncUploadStats(sent: statsA.sent + statsB.sent, sentFailed: statsA.sentFailed + statsB.sentFailed)
+}
 
-    public init(collection: String) {
-        self.collection = collection
+// TODO(sleroux): Implement various bookmark validation issues we can run into
+public struct ValidationStats: Stats {
+    public func hasData() -> Bool {
+        return false
     }
 }
 
-public class SyncStatsReport {
-    private var when: Timestamp
+public class StatsSession {
     private var took: UInt64 = 0
-    private var uid: String
-    private var deviceID: String?
-    private var didLogin: Bool
-    private var why: String
-    private var engines = [String: SyncEngineStats]()
-
-    public init(when: Timestamp, account: FirefoxAccount, didLogin: Bool = false, why: String) {
-        self.when = when
-        self.uid = account.uid
-        self.didLogin = didLogin
-        self.why = why
-        self.deviceID = account.deviceRegistration?.id
-    }
-
-    public func addStats(stats: SyncEngineStats, forEngine engine: String) {
-        engines[engine] = stats
-    }
-
-    public func finishReport() {
-        took = NSDate.now() - when
-    }
-}
-
-public class EngineStatsRecorder {
-    public var engineStats: SyncEngineStats
-
     private var startTime: Timestamp?
-
-    public init(collection: String) {
-        self.engineStats = SyncEngineStats(collection: collection)
-    }
 
     public func start() {
         startTime = NSDate.now()
     }
 
-    public func end() {
+    public func end() -> Self {
         guard let startTime = startTime else {
-            assertionFailure("EngineStatsRecorder called end without first calling start!")
-            return
+            assertionFailure("SyncOperationStats called end without first calling start!")
+            return self
         }
-        engineStats.took = NSDate.now() - startTime
-    }
 
-    public func recordUploadStats(stats: SyncUploadStats) {
-        engineStats.uploadStats = stats.hasData() ? stats : nil
+        took = NSDate.now() - startTime
+        return self
     }
+}
 
-    public func recordDownloadStats(stats: SyncDownloadStats) {
-        engineStats.downloadStats = stats.hasData() ? stats : nil
+// Stats about a single engine's sync
+public class SyncEngineStatsSession: StatsSession {
+    public let collection: String
+    public var uploadStats: SyncUploadStats
+    public var downloadStats: SyncDownloadStats
+    public var failureReason: AnyObject?
+    public var validationStats: ValidationStats?
+
+    public init(collection: String) {
+        self.collection = collection
+        self.uploadStats = SyncUploadStats()
+        self.downloadStats = SyncDownloadStats()
+    }
+}
+
+// Stats and metadata for a sync operation
+public class SyncOperationStatsSession: StatsSession {
+    public let uid: String
+    public let deviceID: String?
+    public let didLogin: Bool
+    public let why: String
+    public let when: Timestamp
+
+    public init(uid: String, deviceID: String?, when: Timestamp, why: String, didLogin: Bool = false) {
+        self.uid = uid
+        self.deviceID = deviceID
+        self.when = when
+        self.why = why
+        self.didLogin = didLogin
     }
 }

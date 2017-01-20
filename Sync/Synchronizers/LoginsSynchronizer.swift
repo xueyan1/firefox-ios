@@ -113,7 +113,7 @@ public class LoginsSynchronizer: IndependentRecordSynchronizer, Synchronizer {
 
             stats.applied += 1
             return storage.applyChangedLogin(self.getLogin(rec)).bind(recordApplyResult)
-                >>> effect({ self.recorder.recordDownloadStats(stats) })
+                >>> effect({ self.statsSession.downloadStats = stats })
         }
     }
 
@@ -131,7 +131,7 @@ public class LoginsSynchronizer: IndependentRecordSynchronizer, Synchronizer {
                              lastTimestamp: lastTimestamp,
                              storageClient: storageClient,
                              onUpload: onUpload)
-            >>> effect({ self.recorder.recordUploadStats(stats) })
+            >>> effect({ self.statsSession.uploadStats = stats })
     }
 
     // Find any records for which a local overlay exists. If we want to be really precise,
@@ -189,6 +189,8 @@ public class LoginsSynchronizer: IndependentRecordSynchronizer, Synchronizer {
                 NSNotificationCenter.defaultCenter().postNotificationName(NotificationDataRemoteLoginChangesWereApplied, object: nil)
             }
         }
+
+        statsSession.start()
         return passwordsClient.getSince(since)
             >>== applyIncomingToStorage
             // TODO: If we fetch sorted by date, we can bump the lastFetched timestamp
